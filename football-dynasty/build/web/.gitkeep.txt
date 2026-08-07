@@ -1,4 +1,0 @@
-# Esta carpeta se genera con:
-#   ./scripts/export_web.sh
-# No hace falta versionar los binarios .wasm/.pck (son grandes).
-# Netlify / CI deben generar o publicar este directorio.

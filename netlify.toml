@@ -1,0 +1,23 @@
+# Netlify (raíz del monorepo FootballDynasty)
+# Publica la exportación HTML5 de Godot.
+
+[build]
+  publish = "football-dynasty/build/web"
+  command = "test -f football-dynasty/build/web/index.html || (echo 'Falta build/web. Ejecuta: cd football-dynasty && ./scripts/export_web.sh y haz push de esa carpeta.' && exit 1)"
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Cross-Origin-Opener-Policy = "same-origin"
+    Cross-Origin-Embedder-Policy = "require-corp"
+    X-Content-Type-Options = "nosniff"
+
+[[headers]]
+  for = "/*.wasm"
+  [headers.values]
+    Content-Type = "application/wasm"
+
+[[headers]]
+  for = "/*.pck"
+  [headers.values]
+    Content-Type = "application/octet-stream"

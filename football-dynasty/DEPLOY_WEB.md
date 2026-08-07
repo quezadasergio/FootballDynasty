@@ -33,15 +33,12 @@ Abre http://localhost:8080 — **no** abras el `index.html` como archivo (`file:
 
 ## 4. Publicar en Netlify
 
-### Ajustes del sitio en Netlify
+El log `Starting to deploy site from '/'` significa que Netlify publicó la **raíz del repo** (README, código fuente) y **no** el juego. Hace falta:
 
-Si el repositorio es el monorepo `FootballDynasty`:
-
-- **Base directory:** `football-dynasty`
-- **Publish directory:** `build/web`
-- **Build command:** (vacío o el de `netlify.toml`)
-
-Primero debes tener `build/web` generado (script local o GitHub Actions). Netlify **no** compila Godot por sí solo.
+1. Tener `football-dynasty/build/web/index.html` **en Git** (tras `./scripts/export_web.sh`).
+2. Usar el `netlify.toml` de la **raíz** del monorepo (`publish = "football-dynasty/build/web"`), o en el panel de Netlify:
+   - **Base directory:** `football-dynasty`
+   - **Publish directory:** `build/web`
 
 ### Opción A — Arrastrar carpeta
 

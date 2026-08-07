@@ -2,6 +2,5 @@
 .godot/
 /android/
 
-# Exportación web (generar con ./scripts/export_web.sh)
-build/web/*
-!build/web/.gitkeep.txt
+# Artefactos de reimportación dentro del build web
+build/web/**/*.import
