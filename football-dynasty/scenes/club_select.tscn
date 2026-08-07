@@ -54,6 +54,23 @@ theme_override_font_sizes/font_size = 28
 text = "Elige tu club"
 horizontal_alignment = 1
 
+[node name="CoachLabel" type="Label" parent="Margin/Scroll/VBox"]
+layout_mode = 2
+text = "Nombre del entrenador"
+
+[node name="CoachRow" type="HBoxContainer" parent="Margin/Scroll/VBox"]
+layout_mode = 2
+
+[node name="CoachName" type="LineEdit" parent="Margin/Scroll/VBox/CoachRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+placeholder_text = "Escribe tu nombre"
+max_length = 40
+
+[node name="BtnRandomName" type="Button" parent="Margin/Scroll/VBox/CoachRow"]
+layout_mode = 2
+text = "Otro nombre"
+
 [node name="Filter" type="OptionButton" parent="Margin/Scroll/VBox"]
 layout_mode = 2
 

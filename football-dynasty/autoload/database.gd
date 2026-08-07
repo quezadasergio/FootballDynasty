@@ -1,6 +1,8 @@
 extends Node
 
 const StaffScript = preload("res://scripts/core/staff_member.gd")
+const YouthSvc = preload("res://scripts/core/youth_service.gd")
+const ContractSvc = preload("res://scripts/core/contract_service.gd")
 
 var first_names: Array = []
 var last_names: Array = []
@@ -14,7 +16,11 @@ var rng: RandomNumberGenerator = RandomNumberGenerator.new()
 const FOREIGN_NATS: Array[String] = [
 	"ARG", "BRA", "COL", "URU", "CHI", "ECU", "PER", "PAR", "VEN",
 	"USA", "CAN", "ESP", "FRA", "POR", "CRO", "NGA", "GHA", "CMR", "SEN",
+	"JPN", "KOR", "CHN", "SAU", "QAT", "IRN", "MAR", "EGY", "CIV", "MLI",
 ]
+
+const ASIAN_NATS: Array[String] = ["JPN", "KOR", "CHN", "SAU", "QAT", "IRN", "UZB", "AUS"]
+const AFRICAN_NATS: Array[String] = ["NGA", "GHA", "CMR", "SEN", "MAR", "EGY", "CIV", "MLI", "TUN", "ALG"]
 
 
 func _ready() -> void:
@@ -66,6 +72,7 @@ func create_world(seed_value: int = 0) -> Dictionary:
 			club.primary_color = Color(club_data.get("color", "#3366cc"))
 			var skill_base := skill_base_for_club(league.tier, club.reputation)
 			club.players = _generate_squad(club.id, skill_base, league.tier)
+			club.youth_players = generate_youth_squad(club.id, league.tier, club.reputation)
 			club.ensure_default_lineup()
 			clubs[club.id] = club
 			league.club_ids.append(club.id)
@@ -150,10 +157,15 @@ func _generate_foreign_market_squad(club_id: String, skill_base: int, country: S
 		var nat := country
 		## ~30% refuerzos de otras nacionalidades (mercado internacional).
 		if rng.randf() < 0.3:
-			if region == "EUR":
-				nat = ["ESP", "FRA", "POR", "CRO", "BRA", "ARG", "NGA", "SEN"][rng.randi_range(0, 7)]
-			else:
-				nat = ["BRA", "ARG", "URU", "COL", "CHI", "PAR", "ECU", "VEN"][rng.randi_range(0, 7)]
+			match region:
+				"EUR":
+					nat = ["ESP", "FRA", "POR", "CRO", "BRA", "ARG", "NGA", "SEN"][rng.randi_range(0, 7)]
+				"ASI":
+					nat = ASIAN_NATS[rng.randi_range(0, ASIAN_NATS.size() - 1)]
+				"AFR":
+					nat = AFRICAN_NATS[rng.randi_range(0, AFRICAN_NATS.size() - 1)]
+				_:
+					nat = ["BRA", "ARG", "URU", "COL", "CHI", "PAR", "ECU", "VEN"][rng.randi_range(0, 7)]
 		var depth_mod := rng.randi_range(-3, 5) if i < 11 else rng.randi_range(-8, 0)
 		## Europa un poco más cara/fuerte de media.
 		if region == "EUR":
@@ -237,8 +249,12 @@ func _pick_name_for_nationality(nationality: String) -> Array:
 		pool_key = "USA"
 	elif nationality in ["POR", "CRO", "ITA", "GER"]:
 		pool_key = "FRA"
-	elif nationality in ["GHA", "CMR", "SEN"]:
+	elif nationality in ["GHA", "CMR", "SEN", "CIV", "MLI", "AUS"]:
 		pool_key = "NGA"
+	elif nationality in ["KOR", "CHN", "UZB"]:
+		pool_key = "JPN"
+	elif nationality in ["SAU", "QAT", "IRN", "MAR", "EGY", "TUN", "ALG"]:
+		pool_key = "ARA"
 	if foreign_names.has(pool_key):
 		var pool: Dictionary = foreign_names[pool_key]
 		var f: Array = pool.get("first", first_names)
@@ -319,8 +335,22 @@ func _make_player(club_id: String, skill_base: int, forced_pos: int = -1, nation
 		p.value = int(p.value * 0.7)
 	if p.age <= 21:
 		p.value = int(p.value * 1.15)
+	p.potential = _potential_for(p)
+	p.marketability = ContractSvc.marketability_for(p, rng)
 	p.club_id = club_id
+	## Quien pertenece a un club llega con contrato en marcha; los vencimientos
+	## se escalonan para que no expire toda la plantilla la misma temporada.
+	if club_id != "":
+		ContractSvc.auto_sign(p, rng, true)
 	return p
+
+
+func _potential_for(p: Player) -> int:
+	## El techo depende del talento y de lo joven que sea.
+	var years_left := maxi(0, 26 - p.age)
+	var talent_factor := float(p.talent) / 95.0
+	var room := int(round(float(years_left) * (1.2 + talent_factor * 1.6)))
+	return clampi(p.overall() + room + rng.randi_range(-2, 3), p.overall(), 95)
 
 
 func make_youth_prospect(region: String, scout_skill: int) -> Player:
@@ -333,6 +363,8 @@ func make_youth_prospect(region: String, scout_skill: int) -> Player:
 	p.happiness = rng.randi_range(60, 85)
 	p.value = int(p.value * 0.55) + 5000
 	p.salary = maxi(400, int(p.salary * 0.55))
+	p.potential = _potential_for(p)
+	p.youth_eligible = p.age < YouthSvc.RETURN_AGE_LIMIT
 	return p
 
 
@@ -345,12 +377,59 @@ func make_squad_replacement(club_id: String, skill_base: int, tier: int, current
 	return _make_player(club_id, skill_base, -1, nat)
 
 
-func generate_staff_candidates(role: int, count: int = 3) -> Array:
+func generate_staff_candidates(role: int, count: int = 10) -> Array:
 	var result: Array = []
 	for i in count:
 		_player_counter += 1
-		var skill := rng.randi_range(38, 88)
+		var skill := rng.randi_range(35, 90)
 		var first: String = first_names[rng.randi_range(0, first_names.size() - 1)]
 		var last: String = last_names[rng.randi_range(0, last_names.size() - 1)]
 		result.append(StaffScript.generate(role, skill, first, last, _player_counter))
+	result.sort_custom(func(a, b) -> bool: return int(a.skill) > int(b.skill))
 	return result
+
+
+func random_coach_name() -> String:
+	var first: String = first_names[rng.randi_range(0, first_names.size() - 1)]
+	var last: String = last_names[rng.randi_range(0, last_names.size() - 1)]
+	var last2: String = last_names[rng.randi_range(0, last_names.size() - 1)]
+	if last2 != last and rng.randf() < 0.45:
+		return "%s %s %s" % [first, last, last2]
+	return "%s %s" % [first, last]
+
+
+func generate_youth_squad(club_id: String, tier: int, reputation: int) -> Array[Player]:
+	## Camada de 7 a 15 chicos de 14 a 19 años.
+	var squad: Array[Player] = []
+	var size := rng.randi_range(YouthSvc.MIN_SQUAD, YouthSvc.MAX_SQUAD)
+	var base := 30 + int(round(float(reputation) * 0.18))
+	if tier <= 1:
+		base += 5
+	var composition: Array = [
+		Player.Position.GK, Player.Position.DEF, Player.Position.DEF,
+		Player.Position.MID, Player.Position.MID, Player.Position.ATT, Player.Position.ATT,
+	]
+	for i in size:
+		var pos: int = composition[i] if i < composition.size() else [
+			Player.Position.GK, Player.Position.DEF, Player.Position.MID, Player.Position.ATT
+		][rng.randi_range(0, 3)]
+		squad.append(make_youth_player(club_id, base + rng.randi_range(-6, 6), pos))
+	return squad
+
+
+func make_youth_player(club_id: String, skill_base: int, forced_pos: int = -1) -> Player:
+	var nat := "MEX"
+	## Algún juvenil extranjero formado en México.
+	if rng.randf() < 0.1:
+		nat = random_foreign_nationality()
+	var p := _make_player(club_id, skill_base, forced_pos, nat)
+	p.age = rng.randi_range(14, 19)
+	p.is_youth = true
+	p.youth_eligible = true
+	p.fatigue = float(rng.randi_range(0, 10))
+	p.talent = clampi(p.talent + rng.randi_range(0, 10), 30, 95)
+	p.potential = _potential_for(p)
+	p.salary = maxi(200, int(float(p.salary) * 0.28))
+	p.value = int(float(p.value) * 0.6) + 5000
+	ContractSvc.sign_formative(p, rng)
+	return p

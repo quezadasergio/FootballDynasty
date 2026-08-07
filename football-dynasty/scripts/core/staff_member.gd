@@ -1,6 +1,10 @@
 extends RefCounted
 
-enum Role { ASSISTANT, FITNESS, DOCTOR, SCOUT }
+enum Role { ASSISTANT, FITNESS, DOCTOR, SCOUT, YOUTH, LEGAL }
+
+const ALL_ROLES: Array[int] = [
+	Role.ASSISTANT, Role.FITNESS, Role.DOCTOR, Role.SCOUT, Role.YOUTH, Role.LEGAL
+]
 
 var id: String = ""
 var staff_name: String = ""
@@ -10,11 +14,17 @@ var wage: int = 1000
 
 
 func role_label() -> String:
-	match role:
+	return label_for_role(role)
+
+
+static func label_for_role(role_value: int) -> String:
+	match role_value:
 		Role.ASSISTANT: return "Auxiliar técnico"
 		Role.FITNESS: return "Preparador físico"
 		Role.DOCTOR: return "Médico"
 		Role.SCOUT: return "Scouter"
+		Role.YOUTH: return "Entrenador de fuerzas básicas"
+		Role.LEGAL: return "Consejero legal y financiero"
 	return "Staff"
 
 
@@ -24,6 +34,8 @@ static func role_from_key(key: String) -> int:
 		"fitness": return Role.FITNESS
 		"doctor": return Role.DOCTOR
 		"scout": return Role.SCOUT
+		"youth": return Role.YOUTH
+		"legal": return Role.LEGAL
 	return Role.ASSISTANT
 
 
@@ -33,6 +45,8 @@ static func role_key(role_value: int) -> String:
 		Role.FITNESS: return "fitness"
 		Role.DOCTOR: return "doctor"
 		Role.SCOUT: return "scout"
+		Role.YOUTH: return "youth"
+		Role.LEGAL: return "legal"
 	return "assistant"
 
 

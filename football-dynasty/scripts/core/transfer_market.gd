@@ -1,9 +1,41 @@
 class_name TransferMarket
 extends RefCounted
 
-## Multiplicadores base sobre el valor del jugador (mercados extranjeros caros).
+const ContractSvc = preload("res://scripts/core/contract_service.gd")
+
+## Multiplicadores base sobre el valor del jugador.
+## Europa y Sudamérica son mercados caros; Asia y África van al nivel del mercado mexicano.
 const MULT_SUD := 3.4
 const MULT_EUR := 7.2
+const MULT_ASI := 1.15
+const MULT_AFR := 1.1
+
+const REGION_LABELS := {
+	"EUR": "Europa",
+	"SUD": "Sudamérica",
+	"ASI": "Asia",
+	"AFR": "África",
+	"MEX": "Liga mexicana",
+	"LIB": "Agente libre",
+}
+
+
+static func region_multiplier(region: String) -> float:
+	match region:
+		"EUR": return MULT_EUR
+		"SUD": return MULT_SUD
+		"ASI": return MULT_ASI
+		"AFR": return MULT_AFR
+	return 1.0
+
+
+static func min_overall_for_region(region: String) -> int:
+	## Los mercados caros solo sueltan jugadores de nivel alto;
+	## Asia y África se comportan como el mercado doméstico.
+	match region:
+		"EUR", "SUD": return 62
+		"ASI", "AFR": return 50
+	return 45
 
 
 static func list_transfer_targets(
@@ -37,9 +69,10 @@ static func list_transfer_targets(
 			})
 	for cid in foreign_clubs.keys():
 		var fclub: Club = foreign_clubs[cid]
+		var min_ovr := min_overall_for_region(fclub.market_region)
 		for p in fclub.players:
-			## Solo salen jugadores útiles del mercado internacional.
-			if p.overall() < 62:
+			## Cada mercado solo suelta jugadores desde cierto nivel.
+			if p.overall() < min_ovr:
 				continue
 			targets.append({
 				"player": p,
@@ -55,9 +88,11 @@ static func list_transfer_targets(
 
 
 static func foreign_asking_price(player: Player, club: Club) -> int:
-	var mult: float = MULT_EUR if club.market_region == "EUR" else MULT_SUD
+	var mult := region_multiplier(club.market_region)
 	## Prestigio del club (Real Madrid / City más caros que Porto / Racing).
-	mult *= 1.0 + maxf(0.0, float(club.reputation - 78) * 0.045)
+	## En Asia y África el prestigio pesa mucho menos: son mercados accesibles.
+	var rep_weight := 0.045 if mult >= MULT_SUD else 0.008
+	mult *= 1.0 + maxf(0.0, float(club.reputation - 78) * rep_weight)
 	var ovr := player.overall()
 	if ovr >= 88:
 		mult *= 1.55
@@ -72,7 +107,9 @@ static func foreign_asking_price(player: Player, club: Club) -> int:
 		mult *= 1.15
 	elif player.age >= 32:
 		mult *= 0.82
-	return maxi(250000, int(float(player.value) * mult))
+	## Los mercados caros tienen suelo alto; Asia y África, no.
+	var floor_price := 250000 if mult >= MULT_SUD else 40000
+	return maxi(floor_price, int(float(player.value) * mult))
 
 
 static func can_buy(buyer: Club, price: int, player: Player = null, buyer_tier: int = 2) -> String:
@@ -117,11 +154,14 @@ static func buy_player(
 		if not found:
 			return "Jugador no encontrado."
 		seller.budget += price
+		seller.transfer_in_acc += price
 		seller.lineup_ids.erase(player.id)
 		seller.bench_ids.erase(player.id)
 		seller.ensure_default_lineup()
 	buyer.budget -= price
+	buyer.transfer_out_acc += price
 	player.club_id = buyer.id
+	player.is_youth = false
 	buyer.players.append(player)
 	buyer.bench_ids.append(player.id)
 	return ""
@@ -143,14 +183,19 @@ static func sell_player(seller: Club, buyer: Club, player: Player, price: int, f
 	seller.lineup_ids.erase(player.id)
 	seller.bench_ids.erase(player.id)
 	seller.budget += price
+	seller.transfer_in_acc += price
 	seller.ensure_default_lineup()
 	if buyer:
 		buyer.budget -= price
+		buyer.transfer_out_acc += price
 		player.club_id = buyer.id
 		buyer.players.append(player)
 		buyer.bench_ids.append(player.id)
 		buyer.ensure_default_lineup()
 	else:
 		player.club_id = ""
+		player.transfer_listed = false
+		## Sale del club: su contrato se extingue y queda como agente libre.
+		ContractSvc.clear_contract(player)
 		free_agents.append(player)
 	return ""

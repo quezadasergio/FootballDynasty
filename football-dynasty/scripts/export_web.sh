@@ -32,6 +32,9 @@ fi
 
 mkdir -p build/web
 
+echo "Importando recursos ..."
+"$GODOT_BIN" --headless --path "$ROOT" --import || true
+
 echo "Exportando Web → build/web/index.html ..."
 "$GODOT_BIN" --headless --path "$ROOT" --export-release "Web" "$ROOT/build/web/index.html"
 

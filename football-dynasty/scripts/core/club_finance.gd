@@ -1,20 +1,45 @@
 class_name ClubFinance
 extends RefCounted
 
-const CONTRACT_TYPES: Array[String] = ["sponsor", "tv", "radio", "streaming"]
+const CONTRACT_TYPES: Array[String] = [
+	"tv", "radio", "streaming", "sponsor", "kit_chest", "kit_sleeve", "kit_shorts",
+]
+
+## Agrupación para la pantalla de Finanzas.
+const CONTRACT_GROUPS: Array[Dictionary] = [
+	{"label": "Derechos de transmisión", "types": ["tv", "radio", "streaming"]},
+	{"label": "Patrocinio comercial", "types": ["sponsor"]},
+	{"label": "Publicidad en el uniforme", "types": ["kit_chest", "kit_sleeve", "kit_shorts"]},
+]
 
 const TYPE_LABELS := {
-	"sponsor": "Patrocinio",
+	"sponsor": "Patrocinio general",
 	"tv": "Televisión",
 	"radio": "Radio",
 	"streaming": "Streaming",
+	"kit_chest": "Uniforme: pecho",
+	"kit_sleeve": "Uniforme: manga",
+	"kit_shorts": "Uniforme: short",
 }
 
 const PARTNERS := {
-	"sponsor": ["Caliente", "Cemex", "Telcel", "BBVA México", "Coca-Cola", "Nike México", "Puma MX"],
+	"sponsor": ["Caliente", "Cemex", "Telcel", "BBVA México", "Coca-Cola", "Banorte", "Bimbo"],
 	"tv": ["TUDN", "ESPN México", "Azteca Deportes", "Fox Sports MX", "Claro Sports"],
 	"radio": ["W Deportes", "Radio Fórmula", "Imagen Radio", "Stereo Cien"],
 	"streaming": ["Vix+", "Disney+ Deportes", "Prime Video MX", "YouTube TV MX"],
+	"kit_chest": ["Corona", "Tecate", "Victoria", "Banco Azteca", "Santander MX", "Oxxo"],
+	"kit_sleeve": ["Nike México", "Puma MX", "Charly", "Adidas MX", "Pirma"],
+	"kit_shorts": ["Sabritas", "Gatorade MX", "Sky Sports MX", "Bachoco", "Sello Rojo"],
+}
+
+const BASE_AMOUNTS := {
+	"tv": [22000, 280],
+	"radio": [5000, 70],
+	"streaming": [10000, 140],
+	"sponsor": [9000, 110],
+	"kit_chest": [13000, 190],
+	"kit_sleeve": [4500, 65],
+	"kit_shorts": [3200, 45],
 }
 
 
@@ -22,39 +47,43 @@ static func type_label(type_key: String) -> String:
 	return str(TYPE_LABELS.get(type_key, type_key))
 
 
-static func list_contract_offers(club: Club, league: League) -> Array:
-	## 3 ofertas por tipo (básica / media / premium).
+static func is_kit_type(type_key: String) -> bool:
+	return type_key.begins_with("kit_")
+
+
+static func base_amount(type_key: String, reputation: int) -> int:
+	var pair: Array = BASE_AMOUNTS.get(type_key, [5000, 60])
+	return int(pair[0]) + reputation * int(pair[1])
+
+
+static func offers_for_type(club: Club, league: League, type_key: String) -> Array:
+	## 3 ofertas del mismo tipo: básica / estándar / premium.
 	var offers: Array = []
 	var tier: int = league.tier if league else 2
 	var tier_mult := 1.0 if tier <= 1 else 0.45
-	var rep := club.reputation
+	var partners: Array = PARTNERS.get(type_key, ["Socio"])
+	var level_names: Array[String] = ["Básico", "Estándar", "Premium"]
+	for level in range(3):
+		var base := base_amount(type_key, club.reputation)
+		var level_mult: float = 0.7 + float(level) * 0.45
+		var per: int = int(float(base) * tier_mult * level_mult)
+		var duration: int = 10 + level * 4
+		var partner: String = str(partners[(club.reputation + level * 3 + type_key.length()) % partners.size()])
+		offers.append({
+			"type": type_key,
+			"partner": partner,
+			"level": level,
+			"level_name": level_names[level],
+			"per_matchday": per,
+			"duration": duration,
+		})
+	return offers
+
+
+static func list_contract_offers(club: Club, league: League) -> Array:
+	var offers: Array = []
 	for type_key in CONTRACT_TYPES:
-		var partners: Array = PARTNERS.get(type_key, ["Socio"])
-		for level in range(3):
-			var base := 0
-			match type_key:
-				"sponsor":
-					base = 9000 + rep * 110
-				"tv":
-					base = 22000 + rep * 280
-				"radio":
-					base = 5000 + rep * 70
-				"streaming":
-					base = 10000 + rep * 140
-			var level_mult: float = 0.7 + float(level) * 0.45
-			var per: int = int(float(base) * tier_mult * level_mult)
-			var duration: int = 10 + level * 4
-			var partner: String = str(partners[(club.reputation + level * 3 + type_key.length()) % partners.size()])
-			var level_names: Array[String] = ["Básico", "Estándar", "Premium"]
-			var level_name: String = level_names[level]
-			offers.append({
-				"type": type_key,
-				"partner": partner,
-				"level": level,
-				"level_name": level_name,
-				"per_matchday": per,
-				"duration": duration,
-			})
+		offers.append_array(offers_for_type(club, league, type_key))
 	return offers
 
 
@@ -141,6 +170,7 @@ static func upgrade_stadium(club: Club, option: Dictionary) -> String:
 	if club.budget < cost:
 		return "Presupuesto insuficiente para la reforma."
 	club.budget -= cost
+	club.facility_acc += cost
 	club.stadium_capacity += seats
 	club.reputation = mini(99, club.reputation + (1 if seats >= 5000 else 0))
 	return "Reforma lista: +%d asientos. Nueva capacidad: %d." % [seats, club.stadium_capacity]

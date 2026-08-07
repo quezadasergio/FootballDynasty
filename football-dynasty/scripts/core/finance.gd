@@ -5,6 +5,7 @@ const WIN_BONUS := 15000
 const DRAW_BONUS := 5000
 const LOSS_BONUS := 2000
 const ClubFinanceScript = preload("res://scripts/core/club_finance.gd")
+const ContractSvc = preload("res://scripts/core/contract_service.gd")
 
 
 static func match_gate_receipts(club: Club, is_home: bool, opponent_rep: int) -> int:
@@ -41,24 +42,30 @@ static func apply_matchday_wages(club: Club) -> int:
 static func apply_matchday_wages_split(club: Club) -> Dictionary:
 	var players := player_wage_bill(club)
 	var staff := club.staff_wage_bill()
-	club.budget -= players + staff
-	return {"players": players, "staff": staff, "total": players + staff}
+	var youth := club.youth_wage_bill()
+	var academy := club.academy_cost()
+	var total := players + staff + youth + academy
+	club.budget -= total
+	return {
+		"players": players,
+		"staff": staff,
+		"youth": youth,
+		"academy": academy,
+		"total": total,
+	}
 
 
 static func _auto_media_amount(type_key: String, club: Club, league: League, pos_bonus: int) -> int:
+	## Valor de mercado sin contrato firmado.
 	var tier: int = league.tier if league else 2
 	var tier_mult := 1.0 if tier <= 1 else 0.42
 	var rep_mult := 0.7 + club.reputation / 120.0
-	match type_key:
-		"tv":
-			return int((28000 + club.reputation * 420 + pos_bonus * 1800) * tier_mult * rep_mult)
-		"radio":
-			return int((6000 + club.reputation * 90 + pos_bonus * 350) * tier_mult * rep_mult)
-		"streaming":
-			return int((12000 + club.reputation * 180 + pos_bonus * 700) * tier_mult * rep_mult)
-		"sponsor", "commercial":
-			return int((8000 + club.reputation * 140 + pos_bonus * 500) * tier_mult * rep_mult)
-	return 0
+	var base := float(ClubFinanceScript.base_amount(type_key, club.reputation)) * 1.25
+	## Estar arriba en la tabla revaloriza sobre todo TV y streaming.
+	var pos_weight := 0.02
+	if type_key == "radio" or ClubFinanceScript.is_kit_type(type_key):
+		pos_weight = 0.008
+	return int(base * (1.0 + float(pos_bonus) * pos_weight) * tier_mult * rep_mult)
 
 
 static func media_rights_for_club(club: Club, league: League, managed_contracts: bool = false) -> Dictionary:
@@ -71,30 +78,32 @@ static func media_rights_for_club(club: Club, league: League, managed_contracts:
 			if table[i]["club_id"] == club.id:
 				pos_bonus = maxi(0, 18 - i)
 				break
-	var partners: Dictionary = {"tv": "", "radio": "", "streaming": "", "commercial": ""}
-	var amounts: Dictionary = {"tv": 0, "radio": 0, "streaming": 0, "commercial": 0}
-	var types: Array[String] = ["tv", "radio", "streaming", "sponsor"]
-	for type_key in types:
-		var out_key: String = "commercial" if type_key == "sponsor" else type_key
+	var amounts: Dictionary = {}
+	var partners: Dictionary = {}
+	for type_key in ClubFinanceScript.CONTRACT_TYPES:
 		if club.media_contracts.has(type_key):
 			var c: Dictionary = club.media_contracts[type_key]
-			amounts[out_key] = int(c.get("per_matchday", 0))
-			partners[out_key] = str(c.get("partner", ""))
+			amounts[type_key] = int(c.get("per_matchday", 0))
+			partners[type_key] = str(c.get("partner", ""))
 		else:
 			var mult: float = 0.35 if managed_contracts else 1.0
-			amounts[out_key] = int(float(_auto_media_amount(type_key, club, league, pos_bonus)) * mult)
-			partners[out_key] = "sin contrato" if managed_contracts else "mercado"
-	var total: int = int(amounts["tv"]) + int(amounts["radio"]) + int(amounts["streaming"]) + int(amounts["commercial"])
+			amounts[type_key] = int(float(_auto_media_amount(type_key, club, league, pos_bonus)) * mult)
+			partners[type_key] = "sin contrato" if managed_contracts else "mercado"
+
+	var broadcast_total: int = int(amounts["tv"]) + int(amounts["radio"]) + int(amounts["streaming"])
+	var kit_total: int = int(amounts["kit_chest"]) + int(amounts["kit_sleeve"]) + int(amounts["kit_shorts"])
+	var commercial: int = int(amounts["sponsor"])
+	## Las figuras de la plantilla atraen publicidad y venta de camisetas.
+	var squad_marketing: int = ContractSvc.squad_marketing_income(club)
 	return {
-		"tv": amounts["tv"],
-		"radio": amounts["radio"],
-		"streaming": amounts["streaming"],
-		"commercial": amounts["commercial"],
-		"tv_partner": partners["tv"],
-		"radio_partner": partners["radio"],
-		"streaming_partner": partners["streaming"],
-		"commercial_partner": partners["commercial"],
-		"total": total,
+		"amounts": amounts,
+		"partners": partners,
+		"broadcast_total": broadcast_total,
+		"kit_total": kit_total,
+		"commercial": commercial,
+		"commercial_partner": str(partners["sponsor"]),
+		"squad_marketing": squad_marketing,
+		"total": broadcast_total + kit_total + commercial + squad_marketing,
 	}
 
 
@@ -124,30 +133,42 @@ static func build_player_matchday_finance(
 	var gate: int = int(match_income.get("gate", 0))
 	var prize: int = int(match_income.get("prize", 0))
 	var income_media: int = int(media.get("total", 0))
+	var transfers_in: int = club.transfer_in_acc
+	var transfers_out: int = club.transfer_out_acc
+	var medical: int = club.medical_acc
+	var facilities: int = club.facility_acc
+	var contracts: int = club.contract_acc
 	var wage_total: int = int(wages.get("total", 0))
-	var expense: int = wage_total + loan_payment
-	var settlement_net := income_media - expense
+	var expense: int = wage_total + loan_payment + medical + transfers_out + facilities + contracts
+	var income: int = gate + prize + income_media + transfers_in
 	return {
 		"budget_before": budget_before,
 		"gate": gate,
 		"prize": prize,
-		"tv": int(media.get("tv", 0)),
-		"radio": int(media.get("radio", 0)),
-		"streaming": int(media.get("streaming", 0)),
+		"contract_amounts": (media.get("amounts", {}) as Dictionary).duplicate(),
+		"contract_partners": (media.get("partners", {}) as Dictionary).duplicate(),
+		"broadcast_total": int(media.get("broadcast_total", 0)),
+		"kit_total": int(media.get("kit_total", 0)),
 		"commercial": int(media.get("commercial", 0)),
-		"tv_partner": str(media.get("tv_partner", "")),
-		"radio_partner": str(media.get("radio_partner", "")),
-		"streaming_partner": str(media.get("streaming_partner", "")),
 		"commercial_partner": str(media.get("commercial_partner", "")),
+		"squad_marketing": int(media.get("squad_marketing", 0)),
+		"contract_cost": contracts,
 		"player_wages": int(wages.get("players", 0)),
 		"staff_wages": int(wages.get("staff", 0)),
+		"youth_wages": int(wages.get("youth", 0)),
+		"academy_cost": int(wages.get("academy", 0)),
+		"medical_cost": medical,
+		"transfers_in": transfers_in,
+		"transfers_out": transfers_out,
+		"transfers_net": transfers_in - transfers_out,
+		"facilities_cost": facilities,
 		"loan_payment": loan_payment,
 		"loan_remaining": club.owner_loan_remaining,
 		"match_income_total": gate + prize,
 		"media_total": income_media,
-		"income_total": gate + prize + income_media,
+		"income_total": income,
 		"expense_total": expense,
-		"net": settlement_net,
+		"net": income - expense,
 		"budget_after": club.budget,
 		"league_name": league.name if league else "",
 		"tier": league.tier if league else 2,

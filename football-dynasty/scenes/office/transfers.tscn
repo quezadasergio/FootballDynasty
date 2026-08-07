@@ -99,7 +99,7 @@ layout_mode = 2
 
 [node name="BtnBuy" type="Button" parent="Margin/Scroll/VBox"]
 layout_mode = 2
-text = "Comprar seleccionado"
+text = "Acordar traspaso y negociar contrato"
 
 [node name="BtnSell" type="Button" parent="Margin/Scroll/VBox"]
 layout_mode = 2

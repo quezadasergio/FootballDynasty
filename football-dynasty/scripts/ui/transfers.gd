@@ -17,6 +17,8 @@ func _ready() -> void:
 	filter_box.add_item("Europa (caro)", 2)
 	filter_box.add_item("Sudamérica (caro)", 3)
 	filter_box.add_item("Agentes libres", 4)
+	filter_box.add_item("Asia (accesible)", 5)
+	filter_box.add_item("África (accesible)", 6)
 	filter_box.item_selected.connect(func(_i): _apply_filter())
 	_refresh()
 
@@ -26,9 +28,12 @@ func _refresh() -> void:
 	var club := GameState.player_club
 	if club == null:
 		return
-	info.text = "Presupuesto: %s  ·  Plantilla: %d  ·  Extranjeros: %d/%d\nEuropa ~7× valor · Sudamérica ~3.5× valor (más si el club es elite)" % [
+	info.text = "Presupuesto: %s  ·  Plantilla: %d  ·  Extranjeros: %d/%d\nEuropa ~7× valor · Sudamérica ~3.4× valor · Asia y África ~1.1× valor (nivel y precio de mercado mexicano)\nEl fichaje va en dos pasos: primero acuerdas el traspaso y después firmas el contrato en Contratos." % [
 		_money(club.budget), club.players.size(), club.count_foreigners(), _foreigner_limit()
 	]
+	if not GameState.pending_transfer.is_empty():
+		var pending := GameState.pending_transfer_player()
+		info.text += "\nTraspaso ya pagado pendiente de contrato: %s. Ciérralo antes de fichar a otro." % pending.display_name()
 	_all_targets = TransferMarket.list_transfer_targets(
 		GameState.clubs, club.id, GameState.free_agents, GameState.foreign_clubs
 	)
@@ -57,6 +62,10 @@ func _apply_filter() -> void:
 				ok = m == "SUD"
 			4:
 				ok = m == "LIB"
+			5:
+				ok = m == "ASI"
+			6:
+				ok = m == "AFR"
 		if not ok:
 			continue
 		if shown >= 60:
@@ -81,24 +90,19 @@ func _on_buy() -> void:
 	if idx < 0 or idx >= _targets.size():
 		return
 	var t: Dictionary = _targets[idx]
-	var buyer := GameState.player_club
-	var seller: Club = null
-	if t["seller_id"] != "":
-		seller = GameState.get_club(t["seller_id"])
-		if seller == null:
-			info.text = "Club vendedor no encontrado."
-			return
-	var err := TransferMarket.buy_player(buyer, seller, t["player"], t["price"], GameState.free_agents, _player_tier())
-	if err != "":
-		info.text = err
+	var result := GameState.agree_transfer_fee(t)
+	if not bool(result.get("ok", false)):
+		info.text = str(result.get("text", ""))
 		return
 	var mkt: String = str(t.get("market", "MEX"))
-	if mkt == "EUR" or mkt == "SUD":
-		info.text = "Fichaje internacional: %s desde %s." % [t["player"].display_name(), t.get("label", "")]
-	else:
-		info.text = "Fichaje completado: %s" % t["player"].display_name()
+	var origin := ""
+	if mkt in ["EUR", "SUD", "ASI", "AFR"]:
+		origin = " Mercado: %s (%s)." % [
+			str(TransferMarket.REGION_LABELS.get(mkt, mkt)), str(t.get("label", ""))
+		]
+	info.text = "%s%s" % [str(result.get("text", "")), origin]
 	GameState.save_game()
-	_refresh()
+	get_tree().change_scene_to_file("res://scenes/office/contracts.tscn")
 
 
 func _on_sell() -> void:

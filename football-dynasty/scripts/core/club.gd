@@ -29,10 +29,19 @@ var country_code: String = "MEX"
 var media_contracts: Dictionary = {}
 var owner_loan_remaining: int = 0
 var owner_loan_payment: int = 0
+## Fuerzas básicas
+var youth_players: Array[Player] = []
+var youth_plan: String = ""
+## Acumuladores de la jornada en curso (para el reporte de ganancias y pérdidas)
+var transfer_in_acc: int = 0
+var transfer_out_acc: int = 0
+var medical_acc: int = 0
+var facility_acc: int = 0
+var contract_acc: int = 0 ## bonos de firma e indemnizaciones de la jornada
 
 
 func is_foreign_market_club() -> bool:
-	return market_region == "EUR" or market_region == "SUD"
+	return market_region == "EUR" or market_region == "SUD" or market_region == "ASI" or market_region == "AFR"
 
 
 func get_staff(role: int):
@@ -71,6 +80,51 @@ func get_player(player_id: String) -> Player:
 	return null
 
 
+func get_youth_player(player_id: String) -> Player:
+	for p in youth_players:
+		if p.id == player_id:
+			return p
+	return null
+
+
+func youth_wage_bill() -> int:
+	var total := 0
+	for p in youth_players:
+		total += p.salary
+	return total
+
+
+func academy_cost() -> int:
+	## Costo fijo de mantener las fuerzas básicas cada jornada.
+	if youth_players.is_empty():
+		return 0
+	return 3500 + reputation * 35 + youth_players.size() * 250
+
+
+func players_without_contract() -> Array[Player]:
+	var out: Array[Player] = []
+	for p in players:
+		if not p.has_contract():
+			out.append(p)
+	return out
+
+
+func transfer_listed_players() -> Array[Player]:
+	var out: Array[Player] = []
+	for p in players:
+		if p.transfer_listed:
+			out.append(p)
+	return out
+
+
+func reset_matchday_ledger() -> void:
+	transfer_in_acc = 0
+	transfer_out_acc = 0
+	medical_acc = 0
+	facility_acc = 0
+	contract_acc = 0
+
+
 func get_lineup_players() -> Array[Player]:
 	var result: Array[Player] = []
 	for pid in lineup_ids:
@@ -94,6 +148,8 @@ func weekly_wage_bill() -> int:
 	for p in players:
 		total += p.salary
 	total += staff_wage_bill()
+	total += youth_wage_bill()
+	total += academy_cost()
 	return total
 
 
@@ -199,6 +255,9 @@ func to_dict() -> Dictionary:
 	var plist: Array = []
 	for p in players:
 		plist.append(p.to_dict())
+	var youth_list: Array = []
+	for p in youth_players:
+		youth_list.append(p.to_dict())
 	var staff_data: Dictionary = {}
 	for key in staff.keys():
 		staff_data[key] = staff[key].to_dict()
@@ -225,6 +284,13 @@ func to_dict() -> Dictionary:
 		"media_contracts": media_contracts.duplicate(true),
 		"owner_loan_remaining": owner_loan_remaining,
 		"owner_loan_payment": owner_loan_payment,
+		"youth_players": youth_list,
+		"youth_plan": youth_plan,
+		"transfer_in_acc": transfer_in_acc,
+		"transfer_out_acc": transfer_out_acc,
+		"medical_acc": medical_acc,
+		"facility_acc": facility_acc,
+		"contract_acc": contract_acc,
 	}
 
 
@@ -250,9 +316,18 @@ static func from_dict(d: Dictionary) -> Club:
 	c.media_contracts = d.get("media_contracts", {}).duplicate(true)
 	c.owner_loan_remaining = int(d.get("owner_loan_remaining", 0))
 	c.owner_loan_payment = int(d.get("owner_loan_payment", 0))
+	c.youth_plan = str(d.get("youth_plan", ""))
+	c.transfer_in_acc = int(d.get("transfer_in_acc", 0))
+	c.transfer_out_acc = int(d.get("transfer_out_acc", 0))
+	c.medical_acc = int(d.get("medical_acc", 0))
+	c.facility_acc = int(d.get("facility_acc", 0))
+	c.contract_acc = int(d.get("contract_acc", 0))
 	c.players.clear()
 	for pd in d.get("players", []):
 		c.players.append(Player.from_dict(pd))
+	c.youth_players.clear()
+	for pd in d.get("youth_players", []):
+		c.youth_players.append(Player.from_dict(pd))
 	c.lineup_ids.clear()
 	for pid in d.get("lineup_ids", []):
 		c.lineup_ids.append(str(pid))

@@ -3,6 +3,7 @@ extends Control
 @onready var list: ItemList = $Margin/Scroll/VBox/ClubList
 @onready var info: Label = $Margin/Scroll/VBox/Info
 @onready var filter_box: OptionButton = $Margin/Scroll/VBox/Filter
+@onready var coach_name: LineEdit = $Margin/Scroll/VBox/CoachRow/CoachName
 var _clubs: Array = []
 var _filtered: Array = []
 
@@ -10,6 +11,8 @@ var _filtered: Array = []
 func _ready() -> void:
 	$Margin/Scroll/VBox/Title.text = "Elige tu club"
 	$Margin/Scroll/VBox/BtnStart.pressed.connect(_on_start)
+	$Margin/Scroll/VBox/CoachRow/BtnRandomName.pressed.connect(_on_random_name)
+	coach_name.text = GameState.coach_name if GameState.coach_name != "" else Database.random_coach_name()
 	list.item_selected.connect(_on_selected)
 	filter_box.clear()
 	filter_box.add_item("Todas las ligas", 0)
@@ -54,11 +57,20 @@ func _on_selected(index: int) -> void:
 	]
 
 
+func _on_random_name() -> void:
+	coach_name.text = Database.random_coach_name()
+
+
 func _on_start() -> void:
 	var selected := list.get_selected_items()
 	if selected.is_empty():
 		return
+	var typed := coach_name.text.strip_edges()
+	if typed == "":
+		info.text = "Escribe el nombre del entrenador antes de empezar."
+		return
 	var c: Dictionary = _filtered[selected[0]]
+	GameState.coach_name = typed
 	GameState.start_new_career(c["id"])
 	GameState.save_game()
 	get_tree().change_scene_to_file("res://scenes/office/office_hub.tscn")

@@ -3,6 +3,10 @@ extends RefCounted
 
 enum Position { GK, DEF, MID, ATT }
 
+## Jornadas de pago que cubre un año de contrato. El sueldo real sigue siendo
+## `salary` por jornada; el sueldo anual es la unidad con la que se negocia.
+const MATCHDAYS_PER_YEAR := 34
+
 var id: String = ""
 var first_name: String = ""
 var last_name: String = ""
@@ -31,6 +35,26 @@ var club_id: String = ""
 var matches_played: int = 0
 var origin_region: String = ""
 var nationality: String = "MEX" ## Código FIFA de 3 letras
+## Parte médico
+var injury_id: String = ""
+var injury_name: String = ""
+var injury_severity: int = 0 ## 1 leve · 2 media · 3 grave
+var injury_matchdays: int = 0 ## jornadas de baja restantes
+var injury_total: int = 0 ## jornadas de baja iniciales (para el parte)
+var treatment: String = "" ## "" sin decidir · reposo · terapia · cirugia
+## Cantera
+var is_youth: bool = false
+var youth_eligible: bool = false ## puede volver a la juvenil (menor de 19)
+var potential: int = 0 ## tope de habilidad alcanzable
+## Contrato con el club
+var contract_years: int = 0 ## duración firmada (1-6)
+var contract_years_left: int = 0 ## temporadas que le quedan; 0 = sin contrato vigente
+var contract_annual_salary: int = 0
+var contract_signing_bonus: int = 0
+var contract_formative: bool = false ## contrato de fuerzas básicas (se renueva solo)
+var renewal_refused: bool = false ## se negó a renovar: solo queda venderlo o dejarlo ir
+var transfer_listed: bool = false
+var marketability: int = 0 ## tirón comercial (patrocinios y venta de camisetas)
 
 
 func display_name() -> String:
@@ -38,8 +62,46 @@ func display_name() -> String:
 	return "%s %s (%s)" % [first_name, last_name, code]
 
 
+func potential_cap() -> int:
+	if potential > 0:
+		return potential
+	return clampi(overall() + 6, 30, 95)
+
+
+func injury_label() -> String:
+	if not injured:
+		return "Sano"
+	if injury_name == "":
+		return "Lesionado"
+	var severities: Array[String] = ["", "leve", "media", "grave"]
+	var sev: String = severities[clampi(injury_severity, 0, 3)]
+	return "%s (%s) — %d jor. de baja" % [injury_name, sev, injury_matchdays]
+
+
 func is_foreign() -> bool:
 	return nationality != "" and nationality != "MEX"
+
+
+func has_contract() -> bool:
+	return contract_years_left > 0
+
+
+func annual_salary() -> int:
+	if contract_annual_salary > 0:
+		return contract_annual_salary
+	return salary * MATCHDAYS_PER_YEAR
+
+
+func set_annual_salary(annual: int) -> void:
+	contract_annual_salary = maxi(0, annual)
+	salary = maxi(1, int(round(float(contract_annual_salary) / float(MATCHDAYS_PER_YEAR))))
+
+
+func contract_label() -> String:
+	if not has_contract():
+		return "SIN CONTRATO"
+	var kind := "formativo" if contract_formative else "profesional"
+	return "%d de %d años (%s)" % [contract_years_left, maxi(contract_years, contract_years_left), kind]
 
 
 func overall() -> int:
@@ -136,6 +198,23 @@ func to_dict() -> Dictionary:
 		"matches_played": matches_played,
 		"origin_region": origin_region,
 		"nationality": nationality,
+		"injury_id": injury_id,
+		"injury_name": injury_name,
+		"injury_severity": injury_severity,
+		"injury_matchdays": injury_matchdays,
+		"injury_total": injury_total,
+		"treatment": treatment,
+		"is_youth": is_youth,
+		"youth_eligible": youth_eligible,
+		"potential": potential,
+		"contract_years": contract_years,
+		"contract_years_left": contract_years_left,
+		"contract_annual_salary": contract_annual_salary,
+		"contract_signing_bonus": contract_signing_bonus,
+		"contract_formative": contract_formative,
+		"renewal_refused": renewal_refused,
+		"transfer_listed": transfer_listed,
+		"marketability": marketability,
 	}
 
 
@@ -171,4 +250,30 @@ static func from_dict(d: Dictionary) -> Player:
 	p.nationality = str(d.get("nationality", "MEX")).to_upper()
 	if p.nationality == "":
 		p.nationality = "MEX"
+	p.injury_id = str(d.get("injury_id", ""))
+	p.injury_name = str(d.get("injury_name", ""))
+	p.injury_severity = int(d.get("injury_severity", 0))
+	p.injury_matchdays = int(d.get("injury_matchdays", 0))
+	p.injury_total = int(d.get("injury_total", p.injury_matchdays))
+	p.treatment = str(d.get("treatment", ""))
+	p.is_youth = bool(d.get("is_youth", false))
+	p.youth_eligible = bool(d.get("youth_eligible", false))
+	p.potential = int(d.get("potential", 0))
+	p.contract_years = int(d.get("contract_years", 0))
+	p.contract_years_left = int(d.get("contract_years_left", 0))
+	p.contract_annual_salary = int(d.get("contract_annual_salary", 0))
+	p.contract_signing_bonus = int(d.get("contract_signing_bonus", 0))
+	p.contract_formative = bool(d.get("contract_formative", false))
+	p.renewal_refused = bool(d.get("renewal_refused", false))
+	p.transfer_listed = bool(d.get("transfer_listed", false))
+	p.marketability = int(d.get("marketability", 0))
+	if p.marketability <= 0:
+		p.marketability = clampi(int(float(p.overall()) * 0.7), 10, 95)
+	## Partidas viejas: lesión sin parte médico detallado.
+	if p.injured and p.injury_matchdays <= 0:
+		p.injury_id = "contractura"
+		p.injury_name = "Molestia sin diagnosticar"
+		p.injury_severity = 1
+		p.injury_matchdays = 2
+		p.injury_total = 2
 	return p

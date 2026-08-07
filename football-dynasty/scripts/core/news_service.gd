@@ -10,6 +10,33 @@ const LOCAL_PRESS: Array[String] = [
 ]
 
 
+## Titulares sobre el entrenador. %s se sustituye por su nombre y el club.
+const COACH_GOOD_HEADLINES: Array[String] = [
+	"Un gran trabajo del DT %s",
+	"%s tiene al %s en modo campeón",
+	"La mano de %s ya se nota en el %s",
+	"%s, el técnico del momento",
+	"El %s cree: %s encontró la fórmula",
+	"Ovación para %s en el %s",
+]
+
+const COACH_BAD_HEADLINES: Array[String] = [
+	"Crece la presión sobre %s",
+	"¿Está en riesgo el puesto de %s en el %s?",
+	"El %s no arranca y %s queda en el ojo del huracán",
+	"La afición pide explicaciones a %s",
+	"Fracaso en el %s: se cuestiona el proyecto de %s",
+	"%s, sin respuestas ante la crisis del %s",
+]
+
+const COACH_NEUTRAL_HEADLINES: Array[String] = [
+	"%s pide calma en el %s",
+	"%s: «Vamos partido a partido»",
+	"El proyecto de %s en el %s, a media construcción",
+	"%s ajusta piezas en el %s",
+]
+
+
 static func generate_matchday_digest(game_state: Node) -> Array:
 	## Lista de {medium, outlet, headline, body} — más cobertura a Liga MX.
 	var news: Array = []
@@ -24,6 +51,9 @@ static func generate_matchday_digest(game_state: Node) -> Array:
 
 	## Noticias del club del jugador (siempre).
 	_append_player_club_news(news, rng, game_state, player_club, player_league, summary)
+	_append_coach_news(news, rng, game_state, player_club, player_league, summary)
+	_append_youth_news(news, rng, game_state, player_club)
+	_append_contract_news(news, rng, game_state, player_club)
 
 	## Cobertura por liga: 1ª mucha, 2ª poca.
 	for lid in game_state.leagues.keys():
@@ -121,17 +151,17 @@ static func _append_player_club_news(
 	var injured: Array = []
 	for p in club.players:
 		if p.injured:
-			injured.append(p.display_name())
+			injured.append("%s (%s, %d jor.)" % [p.display_name(), p.injury_name, p.injury_matchdays])
 	if injured.size() > 0:
 		var inj_txt := ""
 		for i in mini(3, injured.size()):
 			if i > 0:
-				inj_txt += ", "
+				inj_txt += "; "
 			inj_txt += str(injured[i])
 		news.append(_item(
 			"Prensa local", LOCAL_PRESS[rng.randi_range(0, LOCAL_PRESS.size() - 1)],
 			"Parte médico en el %s" % club.short_name,
-			"Baja(s) reportada(s): %s. El staff médico trabaja para recuperarlos." % inj_txt,
+			"Baja(s) reportada(s): %s. El cuerpo médico define cirugías y tratamientos." % inj_txt,
 			true
 		))
 
@@ -152,6 +182,157 @@ static func _append_player_club_news(
 			"La clasificación de %s muestra al %s con %d puntos tras la jornada." % [
 				league.name, club.name, pts
 			],
+			true
+		))
+
+
+static func _coach_mood(league: League, club: Club, summary: Dictionary) -> int:
+	## -1 mala racha · 0 normal · 1 buen momento.
+	var score := 0
+	if not summary.is_empty():
+		var is_home: bool = str(summary.get("home_id", "")) == club.id
+		var mine: int = int(summary.get("home_goals", 0)) if is_home else int(summary.get("away_goals", 0))
+		var theirs: int = int(summary.get("away_goals", 0)) if is_home else int(summary.get("home_goals", 0))
+		if mine > theirs:
+			score += 2
+		elif mine < theirs:
+			score -= 2
+		if theirs - mine >= 3:
+			score -= 1
+		elif mine - theirs >= 3:
+			score += 1
+	if league:
+		var pos := _table_position(league, club.id)
+		var total: int = league.club_ids.size()
+		if pos > 0:
+			if pos <= 4:
+				score += 1
+			elif pos > total - 4:
+				score -= 1
+	if score >= 2:
+		return 1
+	if score <= -2:
+		return -1
+	return 0
+
+
+static func _append_coach_news(
+	news: Array,
+	rng: RandomNumberGenerator,
+	game_state: Node,
+	club: Club,
+	league: League,
+	summary: Dictionary
+) -> void:
+	var coach: String = str(game_state.coach_name)
+	if coach.strip_edges() == "":
+		return
+	var mood := _coach_mood(league, club, summary)
+	var pos := _table_position(league, club.id)
+	var headline := ""
+	var body := ""
+	match mood:
+		1:
+			headline = COACH_GOOD_HEADLINES[rng.randi_range(0, COACH_GOOD_HEADLINES.size() - 1)]
+			body = "Los analistas destacan la lectura de partido de %s. El %s marcha %dº y el vestidor respalda al cuerpo técnico." % [
+				coach, club.name, pos
+			]
+		-1:
+			headline = COACH_BAD_HEADLINES[rng.randi_range(0, COACH_BAD_HEADLINES.size() - 1)]
+			body = "En la mesa se cuestionan las decisiones de %s. El %s aparece %dº y la directiva guarda silencio." % [
+				coach, club.name, pos
+			]
+		_:
+			headline = COACH_NEUTRAL_HEADLINES[rng.randi_range(0, COACH_NEUTRAL_HEADLINES.size() - 1)]
+			body = "%s insiste en el trabajo diario. El %s ocupa el lugar %d de la tabla." % [
+				coach, club.name, pos
+			]
+	## Los titulares llevan uno o dos huecos: nombre del DT y, a veces, el club.
+	if headline.count("%s") >= 2:
+		if headline.begins_with("El %s") or headline.begins_with("Fracaso"):
+			headline = headline % [club.short_name, coach]
+		else:
+			headline = headline % [coach, club.short_name]
+	else:
+		headline = headline % coach
+
+	var medium := "Prensa nacional"
+	var outlet: String = NATIONAL_PRESS[rng.randi_range(0, NATIONAL_PRESS.size() - 1)]
+	var roll := rng.randf()
+	if roll < 0.3:
+		medium = "Radio"
+		outlet = RADIO_OUTLETS[rng.randi_range(0, RADIO_OUTLETS.size() - 1)]
+	elif roll < 0.6:
+		medium = "Internet"
+		outlet = WEB_OUTLETS[rng.randi_range(0, WEB_OUTLETS.size() - 1)]
+	news.append(_item(medium, outlet, headline, body, true))
+
+	## De vez en cuando, una segunda nota de opinión sobre el técnico.
+	if rng.randf() < 0.45:
+		var extra_body := ""
+		match mood:
+			1:
+				extra_body = "Columna de opinión: «%s ha ordenado al %s. Si mantiene el bloque, pelea arriba»." % [coach, club.short_name]
+			-1:
+				extra_body = "Columna de opinión: «El %s necesita reaccionar. La paciencia con %s se agota»." % [club.short_name, coach]
+			_:
+				extra_body = "Columna de opinión: «%s todavía busca su once ideal en el %s»." % [coach, club.short_name]
+		news.append(_item(
+			"Prensa local", LOCAL_PRESS[rng.randi_range(0, LOCAL_PRESS.size() - 1)],
+			"Opinión: el momento de %s" % coach, extra_body, true
+		))
+
+
+static func _append_youth_news(news: Array, rng: RandomNumberGenerator, game_state: Node, club: Club) -> void:
+	var improved: Array = game_state.last_matchday_youth
+	if improved.is_empty() or rng.randf() > 0.6:
+		return
+	var names := ""
+	for i in mini(3, improved.size()):
+		if i > 0:
+			names += ", "
+		names += str(improved[i])
+	news.append(_item(
+		"Internet", WEB_OUTLETS[rng.randi_range(0, WEB_OUTLETS.size() - 1)],
+		"Cantera del %s: nombres que suben" % club.short_name,
+		"En fuerzas básicas destacan %s. El cuerpo técnico sigue su evolución de cerca." % names,
+		true
+	))
+
+
+static func _append_contract_news(news: Array, rng: RandomNumberGenerator, game_state: Node, club: Club) -> void:
+	## La prensa se ceba con los contratos: vencimientos, transferibles y estrellas.
+	var expiring: PackedStringArray = []
+	var listed: PackedStringArray = []
+	var no_contract: PackedStringArray = []
+	for p in club.players:
+		if not p.has_contract():
+			no_contract.append(p.display_name())
+		elif p.contract_years_left <= 1:
+			expiring.append(p.display_name())
+		if p.transfer_listed:
+			listed.append(p.display_name())
+
+	if not no_contract.is_empty():
+		news.append(_item(
+			"Prensa nacional", NATIONAL_PRESS[rng.randi_range(0, NATIONAL_PRESS.size() - 1)],
+			"Lío contractual en el %s" % club.short_name,
+			"Hay futbolistas sin contrato vigente: %s. La liga exige regularizar la situación antes de la próxima jornada." % ", ".join(no_contract),
+			true
+		))
+	if not listed.is_empty() and rng.randf() < 0.7:
+		news.append(_item(
+			"Internet", WEB_OUTLETS[rng.randi_range(0, WEB_OUTLETS.size() - 1)],
+			"El %s pone en el mercado a %d jugador(es)" % [club.short_name, listed.size()],
+			"Fuentes cercanas al club señalan como transferibles a %s. Se esperan ofertas en los próximos días." % ", ".join(listed),
+			true
+		))
+	if not expiring.is_empty() and rng.randf() < 0.5:
+		var who: String = expiring[rng.randi_range(0, expiring.size() - 1)]
+		news.append(_item(
+			"Radio", RADIO_OUTLETS[rng.randi_range(0, RADIO_OUTLETS.size() - 1)],
+			"%s entra en su último año de contrato" % who,
+			"En el %s se habla de renovación. El entorno del jugador escucha propuestas mientras la directiva calcula el esfuerzo salarial." % club.name,
 			true
 		))
 

@@ -4,6 +4,8 @@ extends RefCounted
 signal event_generated(event: MatchEvent)
 signal match_finished(home_goals: int, away_goals: int)
 
+const MedicalSvc = preload("res://scripts/core/medical_service.gd")
+
 var home: Club
 var away: Club
 var home_goals: int = 0
@@ -330,9 +332,13 @@ func _random_injury() -> Array[MatchEvent]:
 	if lineup.is_empty():
 		return events
 	var p: Player = lineup[rng.randi_range(0, lineup.size() - 1)]
-	p.injured = true
-	p.stamina = 0
-	var ev := _make_event(MatchEvent.Type.INJURY, club.id, p.id, "%s se lesiona." % p.display_name())
+	MedicalSvc.assign_injury(p, rng, true)
+	var ev := _make_event(
+		MatchEvent.Type.INJURY, club.id, p.id,
+		"%s se lesiona: %s. Baja estimada: %d jornadas." % [
+			p.display_name(), p.injury_name, p.injury_matchdays
+		]
+	)
 	events.append(ev)
 	event_generated.emit(ev)
 	# Force sub if possible

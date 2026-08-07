@@ -56,6 +56,30 @@ text = "Oficina"
 layout_mode = 2
 autowrap_mode = 3
 
+[node name="Alert" type="Label" parent="Margin/Scroll/VBox"]
+visible = false
+layout_mode = 2
+autowrap_mode = 3
+theme_override_colors/font_color = Color(1, 0.55, 0.45, 1)
+
+[node name="SaleBox" type="VBoxContainer" parent="Margin/Scroll/VBox"]
+visible = false
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="SaleLabel" type="Label" parent="Margin/Scroll/VBox/SaleBox"]
+layout_mode = 2
+autowrap_mode = 3
+text = "Oferta por un transferible"
+
+[node name="BtnSell" type="Button" parent="Margin/Scroll/VBox/SaleBox"]
+layout_mode = 2
+text = "Aceptar la venta"
+
+[node name="BtnKeep" type="Button" parent="Margin/Scroll/VBox/SaleBox"]
+layout_mode = 2
+text = "Rechazar la oferta"
+
 [node name="ScoutBox" type="VBoxContainer" parent="Margin/Scroll/VBox"]
 visible = false
 layout_mode = 2
@@ -109,6 +133,11 @@ text = "Finanzas"
 custom_minimum_size = Vector2(220, 44)
 layout_mode = 2
 text = "Fichajes"
+
+[node name="BtnContracts" type="Button" parent="Margin/Scroll/VBox/Buttons"]
+custom_minimum_size = Vector2(220, 44)
+layout_mode = 2
+text = "Contratos"
 
 [node name="BtnSettings" type="Button" parent="Margin/Scroll/VBox/Buttons"]
 custom_minimum_size = Vector2(220, 44)
