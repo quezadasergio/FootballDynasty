@@ -1,10 +1,10 @@
 # Publica la exportación web de Godot (carpeta build/web).
-# Genera esa carpeta con: ./scripts/export_web.sh
-# o desde Godot: Proyecto → Exportar → Web.
+# Si Netlify usa Base directory = football-dynasty, este archivo aplica.
+# Si Netlify usa la raíz del monorepo, usa el netlify.toml de la raíz del repo.
 
 [build]
   publish = "build/web"
-  command = "echo 'Serving prebuilt Godot web export from build/web'"
+  command = "test -f build/web/index.html || (echo 'Falta build/web/index.html. Exporta con ./scripts/export_web.sh y haz commit/push.' && exit 1)"
 
 [[headers]]
   for = "/*"
