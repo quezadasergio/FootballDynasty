@@ -1,0 +1,121 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/office_hub.gd" id="1"]
+[ext_resource type="PackedScene" path="res://scenes/ui/back_arrow.tscn" id="2"]
+
+[node name="OfficeHub" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+script = ExtResource("1")
+
+[node name="BG" type="ColorRect" parent="."]
+mouse_filter = 2
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color(0.1, 0.13, 0.12, 1)
+
+[node name="BackArrow" parent="." instance=ExtResource("2")]
+layout_mode = 0
+offset_left = 8.0
+offset_top = 8.0
+offset_right = 52.0
+offset_bottom = 52.0
+target_scene = "res://scenes/main_menu.tscn"
+
+[node name="Margin" type="MarginContainer" parent="."]
+mouse_filter = 2
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+theme_override_constants/margin_left = 40
+theme_override_constants/margin_top = 56
+theme_override_constants/margin_right = 40
+theme_override_constants/margin_bottom = 24
+
+[node name="Scroll" type="ScrollContainer" parent="Margin"]
+layout_mode = 2
+horizontal_scroll_mode = 0
+vertical_scroll_mode = 1
+
+[node name="VBox" type="VBoxContainer" parent="Margin/Scroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 16
+
+[node name="Header" type="Label" parent="Margin/Scroll/VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 32
+text = "Oficina"
+
+[node name="Status" type="Label" parent="Margin/Scroll/VBox"]
+layout_mode = 2
+autowrap_mode = 3
+
+[node name="ScoutBox" type="VBoxContainer" parent="Margin/Scroll/VBox"]
+visible = false
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="ScoutLabel" type="Label" parent="Margin/Scroll/VBox/ScoutBox"]
+layout_mode = 2
+autowrap_mode = 3
+text = "Propuesta del scouter"
+
+[node name="BtnAccept" type="Button" parent="Margin/Scroll/VBox/ScoutBox"]
+layout_mode = 2
+text = "Traer al club"
+
+[node name="BtnReject" type="Button" parent="Margin/Scroll/VBox/ScoutBox"]
+layout_mode = 2
+text = "Rechazar"
+
+[node name="Buttons" type="GridContainer" parent="Margin/Scroll/VBox"]
+layout_mode = 2
+theme_override_constants/h_separation = 12
+theme_override_constants/v_separation = 12
+columns = 2
+
+[node name="BtnSquad" type="Button" parent="Margin/Scroll/VBox/Buttons"]
+custom_minimum_size = Vector2(220, 44)
+layout_mode = 2
+text = "Plantilla"
+
+[node name="BtnTactics" type="Button" parent="Margin/Scroll/VBox/Buttons"]
+custom_minimum_size = Vector2(220, 44)
+layout_mode = 2
+text = "Alineación / Táctica"
+
+[node name="BtnTable" type="Button" parent="Margin/Scroll/VBox/Buttons"]
+custom_minimum_size = Vector2(220, 44)
+layout_mode = 2
+text = "Clasificación"
+
+[node name="BtnCalendar" type="Button" parent="Margin/Scroll/VBox/Buttons"]
+custom_minimum_size = Vector2(220, 44)
+layout_mode = 2
+text = "Calendario / Jugar"
+
+[node name="BtnFinances" type="Button" parent="Margin/Scroll/VBox/Buttons"]
+custom_minimum_size = Vector2(220, 44)
+layout_mode = 2
+text = "Finanzas"
+
+[node name="BtnTransfers" type="Button" parent="Margin/Scroll/VBox/Buttons"]
+custom_minimum_size = Vector2(220, 44)
+layout_mode = 2
+text = "Fichajes"
+
+[node name="BtnSettings" type="Button" parent="Margin/Scroll/VBox/Buttons"]
+custom_minimum_size = Vector2(220, 44)
+layout_mode = 2
+text = "Configuración"
+
+[node name="BtnSave" type="Button" parent="Margin/Scroll/VBox/Buttons"]
+custom_minimum_size = Vector2(220, 44)
+layout_mode = 2
+text = "Guardar"

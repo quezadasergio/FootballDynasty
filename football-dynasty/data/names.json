@@ -1,0 +1,42 @@
+{
+  "first_names": [
+    "José", "Juan", "Luis", "Carlos", "Miguel", "Jorge", "Francisco", "Antonio", "Pedro", "Roberto",
+    "Ricardo", "Fernando", "Alejandro", "Eduardo", "Raúl", "Óscar", "Héctor", "Arturo", "Guillermo", "Sergio",
+    "Diego", "Andrés", "Pablo", "Iván", "Javier", "Ángel", "Manuel", "David", "Daniel", "Gabriel",
+    "Sebastián", "Emiliano", "Mateo", "Santiago", "Leonardo", "Adrián", "Uriel", "César", "Erick", "Bruno",
+    "Alan", "Kevin", "Brayan", "Jonathan", "Cristian", "Irving", "Néstor", "Omar", "Víctor", "Ramón",
+    "Salvador", "Ignacio", "Rodolfo", "Alberto", "Enrique", "Marcos", "Tomás", "Felipe", "Hugo", "Gael",
+    "Isaac", "Israel", "Josué", "Érick", "Yael", "Bryan", "Edgar", "Gerardo", "Joaquín", "Mauricio"
+  ],
+  "last_names": [
+    "García", "Hernández", "López", "Martínez", "González", "Pérez", "Rodríguez", "Sánchez", "Ramírez", "Torres",
+    "Flores", "Rivera", "Gómez", "Díaz", "Reyes", "Morales", "Cruz", "Ortiz", "Gutiérrez", "Ramos",
+    "Vargas", "Castillo", "Jiménez", "Moreno", "Romero", "Álvarez", "Mendoza", "Aguilar", "Medina", "Guerrero",
+    "Ruiz", "Soto", "Chávez", "Ríos", "Vega", "Navarro", "Salazar", "Ortega", "Campos", "Delgado",
+    "Cortés", "Núñez", "Silva", "Molina", "Cabrera", "Pacheco", "Estrada", "Fuentes", "Valdez", "Cervantes",
+    "Ibarra", "Solís", "Mejía", "Zamora", "Ochoa", "Pineda", "Arellano", "Bautista", "Cárdenas", "Domínguez",
+    "Figueroa", "Galván", "Huerta", "Juárez", "Lara", "Macías", "Nava", "Orozco", "Padilla", "Quiroz"
+  ],
+  "foreign_names": {
+    "BRA": {
+      "first": ["Lucas", "Gabriel", "Rafael", "Bruno", "Felipe", "Thiago", "Matheus", "Gustavo", "André", "João", "Pedro", "Caio", "Murilo", "Igor", "Diego"],
+      "last": ["Silva", "Santos", "Oliveira", "Souza", "Lima", "Pereira", "Costa", "Ferreira", "Almeida", "Nascimento", "Carvalho", "Rocha", "Martins", "Barbosa", "Ribeiro"]
+    },
+    "ARG": {
+      "first": ["Facundo", "Lautaro", "Nicolás", "Franco", "Matías", "Gonzalo", "Ezequiel", "Julián", "Agustín", "Tomás", "Maximiliano", "Lucas", "Santiago", "Emiliano", "Rodrigo"],
+      "last": ["Fernández", "González", "Rodríguez", "López", "Martínez", "Pérez", "Gómez", "Díaz", "Romero", "Álvarez", "Sosa", "Acosta", "Benítez", "Castro", "Rojas"]
+    },
+    "USA": {
+      "first": ["Michael", "Chris", "Jordan", "Tyler", "Brandon", "Austin", "Ethan", "Ryan", "Jackson", "Caleb", "Nathan", "Miles", "Cole", "Dylan", "Sean"],
+      "last": ["Smith", "Johnson", "Williams", "Brown", "Jones", "Miller", "Davis", "Wilson", "Anderson", "Thomas", "Taylor", "Moore", "Jackson", "Martin", "Lee"]
+    },
+    "FRA": {
+      "first": ["Antoine", "Hugo", "Lucas", "Mathieu", "Kylian", "Olivier", "Paul", "Jules", "Adrien", "Théo", "Enzo", "Raphaël", "Nathan", "Maxime", "Alexandre"],
+      "last": ["Martin", "Bernard", "Dubois", "Thomas", "Robert", "Richard", "Petit", "Durand", "Leroy", "Moreau", "Simon", "Laurent", "Lefebvre", "Michel", "Garcia"]
+    },
+    "NGA": {
+      "first": ["Chukwudi", "Ifeanyi", "Emeka", "Obinna", "Tunde", "Segun", "Kelechi", "Oluwaseun", "Chinedu", "Adewale", "Femi", "Babatunde", "Nnamdi", "Uche", "Yusuf"],
+      "last": ["Okafor", "Adebayo", "Okoro", "Balogun", "Nwosu", "Eze", "Okonkwo", "Ibrahim", "Musa", "Ogunleye", "Chukwu", "Adeyemi", "Bello", "Lawal", "Obasi"]
+    }
+  }
+}

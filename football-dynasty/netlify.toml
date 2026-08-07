@@ -1,0 +1,24 @@
+# Publica la exportación web de Godot (carpeta build/web).
+# Genera esa carpeta con: ./scripts/export_web.sh
+# o desde Godot: Proyecto → Exportar → Web.
+
+[build]
+  publish = "build/web"
+  command = "echo 'Serving prebuilt Godot web export from build/web'"
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Cross-Origin-Opener-Policy = "same-origin"
+    Cross-Origin-Embedder-Policy = "require-corp"
+    X-Content-Type-Options = "nosniff"
+
+[[headers]]
+  for = "/*.wasm"
+  [headers.values]
+    Content-Type = "application/wasm"
+
+[[headers]]
+  for = "/*.pck"
+  [headers.values]
+    Content-Type = "application/octet-stream"

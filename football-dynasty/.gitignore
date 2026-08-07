@@ -1,0 +1,7 @@
+# Godot 4+ specific ignores
+.godot/
+/android/
+
+# Exportación web (generar con ./scripts/export_web.sh)
+build/web/*
+!build/web/.gitkeep.txt

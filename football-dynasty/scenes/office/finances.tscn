@@ -1,0 +1,116 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/finances.gd" id="1"]
+[ext_resource type="PackedScene" path="res://scenes/ui/back_arrow.tscn" id="2"]
+
+[node name="Finances" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+script = ExtResource("1")
+
+[node name="BG" type="ColorRect" parent="."]
+mouse_filter = 2
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color(0.1, 0.1, 0.12, 1)
+
+[node name="BackArrow" parent="." instance=ExtResource("2")]
+layout_mode = 0
+offset_left = 8.0
+offset_top = 8.0
+offset_right = 52.0
+offset_bottom = 52.0
+target_scene = "res://scenes/office/office_hub.tscn"
+
+[node name="Margin" type="MarginContainer" parent="."]
+mouse_filter = 2
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+theme_override_constants/margin_left = 24
+theme_override_constants/margin_top = 56
+theme_override_constants/margin_right = 24
+theme_override_constants/margin_bottom = 16
+
+[node name="Scroll" type="ScrollContainer" parent="Margin"]
+layout_mode = 2
+horizontal_scroll_mode = 0
+vertical_scroll_mode = 1
+
+[node name="VBox" type="VBoxContainer" parent="Margin/Scroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 12
+
+[node name="Title" type="Label" parent="Margin/Scroll/VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 26
+text = "Finanzas"
+
+[node name="Body" type="RichTextLabel" parent="Margin/Scroll/VBox"]
+custom_minimum_size = Vector2(0, 220)
+layout_mode = 2
+bbcode_enabled = true
+fit_content = true
+
+[node name="Status" type="Label" parent="Margin/Scroll/VBox"]
+layout_mode = 2
+autowrap_mode = 3
+text = "Gestiona contratos, préstamo del dueño y reformas del estadio."
+
+[node name="ContractsBox" type="VBoxContainer" parent="Margin/Scroll/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="CT" type="Label" parent="Margin/Scroll/VBox/ContractsBox"]
+layout_mode = 2
+text = "Ofertas de contratos (patrocinio / TV / radio / streaming)"
+
+[node name="ContractList" type="ItemList" parent="Margin/Scroll/VBox/ContractsBox"]
+custom_minimum_size = Vector2(0, 160)
+layout_mode = 2
+
+[node name="BtnSign" type="Button" parent="Margin/Scroll/VBox/ContractsBox"]
+layout_mode = 2
+text = "Firmar contrato seleccionado"
+
+[node name="BtnCancel" type="Button" parent="Margin/Scroll/VBox/ContractsBox"]
+layout_mode = 2
+text = "Cancelar contrato del mismo tipo"
+
+[node name="LoanBox" type="VBoxContainer" parent="Margin/Scroll/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="LT" type="Label" parent="Margin/Scroll/VBox/LoanBox"]
+layout_mode = 2
+text = "Préstamo del dueño del club"
+
+[node name="LoanList" type="ItemList" parent="Margin/Scroll/VBox/LoanBox"]
+custom_minimum_size = Vector2(0, 100)
+layout_mode = 2
+
+[node name="BtnLoan" type="Button" parent="Margin/Scroll/VBox/LoanBox"]
+layout_mode = 2
+text = "Pedir préstamo seleccionado"
+
+[node name="StadiumBox" type="VBoxContainer" parent="Margin/Scroll/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="ST" type="Label" parent="Margin/Scroll/VBox/StadiumBox"]
+layout_mode = 2
+text = "Reformas del estadio (más capacidad = más taquilla)"
+
+[node name="StadiumList" type="ItemList" parent="Margin/Scroll/VBox/StadiumBox"]
+custom_minimum_size = Vector2(0, 90)
+layout_mode = 2
+
+[node name="BtnUpgrade" type="Button" parent="Margin/Scroll/VBox/StadiumBox"]
+layout_mode = 2
+text = "Contratar reforma seleccionada"
