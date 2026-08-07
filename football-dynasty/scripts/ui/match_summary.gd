@@ -20,6 +20,10 @@ func _ready() -> void:
 
 
 func _on_advance() -> void:
+	## Con jugadores sin contrato no se liquida la jornada: hay que resolverlo antes.
+	if GameState.contract_block_reason() != "":
+		get_tree().change_scene_to_file("res://scenes/office/contracts.tscn")
+		return
 	GameState.advance_after_matchday()
 	GameState.save_game()
 	get_tree().change_scene_to_file("res://scenes/office/matchday_finance.tscn")

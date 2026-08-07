@@ -2,6 +2,7 @@ extends Node
 
 const StaffScript = preload("res://scripts/core/staff_member.gd")
 const YouthSvc = preload("res://scripts/core/youth_service.gd")
+const ContractSvc = preload("res://scripts/core/contract_service.gd")
 
 var first_names: Array = []
 var last_names: Array = []
@@ -335,7 +336,12 @@ func _make_player(club_id: String, skill_base: int, forced_pos: int = -1, nation
 	if p.age <= 21:
 		p.value = int(p.value * 1.15)
 	p.potential = _potential_for(p)
+	p.marketability = ContractSvc.marketability_for(p, rng)
 	p.club_id = club_id
+	## Quien pertenece a un club llega con contrato en marcha; los vencimientos
+	## se escalonan para que no expire toda la plantilla la misma temporada.
+	if club_id != "":
+		ContractSvc.auto_sign(p, rng, true)
 	return p
 
 
@@ -425,4 +431,5 @@ func make_youth_player(club_id: String, skill_base: int, forced_pos: int = -1) -
 	p.potential = _potential_for(p)
 	p.salary = maxi(200, int(float(p.salary) * 0.28))
 	p.value = int(float(p.value) * 0.6) + 5000
+	ContractSvc.sign_formative(p, rng)
 	return p

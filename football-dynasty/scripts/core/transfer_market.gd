@@ -1,6 +1,8 @@
 class_name TransferMarket
 extends RefCounted
 
+const ContractSvc = preload("res://scripts/core/contract_service.gd")
+
 ## Multiplicadores base sobre el valor del jugador.
 ## Europa y Sudamérica son mercados caros; Asia y África van al nivel del mercado mexicano.
 const MULT_SUD := 3.4
@@ -192,5 +194,8 @@ static func sell_player(seller: Club, buyer: Club, player: Player, price: int, f
 		buyer.ensure_default_lineup()
 	else:
 		player.club_id = ""
+		player.transfer_listed = false
+		## Sale del club: su contrato se extingue y queda como agente libre.
+		ContractSvc.clear_contract(player)
 		free_agents.append(player)
 	return ""

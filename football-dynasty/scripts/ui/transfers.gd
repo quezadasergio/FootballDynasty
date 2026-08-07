@@ -28,9 +28,12 @@ func _refresh() -> void:
 	var club := GameState.player_club
 	if club == null:
 		return
-	info.text = "Presupuesto: %s  ·  Plantilla: %d  ·  Extranjeros: %d/%d\nEuropa ~7× valor · Sudamérica ~3.4× valor · Asia y África ~1.1× valor (nivel y precio de mercado mexicano)" % [
+	info.text = "Presupuesto: %s  ·  Plantilla: %d  ·  Extranjeros: %d/%d\nEuropa ~7× valor · Sudamérica ~3.4× valor · Asia y África ~1.1× valor (nivel y precio de mercado mexicano)\nEl fichaje va en dos pasos: primero acuerdas el traspaso y después firmas el contrato en Contratos." % [
 		_money(club.budget), club.players.size(), club.count_foreigners(), _foreigner_limit()
 	]
+	if not GameState.pending_transfer.is_empty():
+		var pending := GameState.pending_transfer_player()
+		info.text += "\nTraspaso ya pagado pendiente de contrato: %s. Ciérralo antes de fichar a otro." % pending.display_name()
 	_all_targets = TransferMarket.list_transfer_targets(
 		GameState.clubs, club.id, GameState.free_agents, GameState.foreign_clubs
 	)
@@ -87,27 +90,19 @@ func _on_buy() -> void:
 	if idx < 0 or idx >= _targets.size():
 		return
 	var t: Dictionary = _targets[idx]
-	var buyer := GameState.player_club
-	var seller: Club = null
-	if t["seller_id"] != "":
-		seller = GameState.get_club(t["seller_id"])
-		if seller == null:
-			info.text = "Club vendedor no encontrado."
-			return
-	var err := TransferMarket.buy_player(buyer, seller, t["player"], t["price"], GameState.free_agents, _player_tier())
-	if err != "":
-		info.text = err
+	var result := GameState.agree_transfer_fee(t)
+	if not bool(result.get("ok", false)):
+		info.text = str(result.get("text", ""))
 		return
 	var mkt: String = str(t.get("market", "MEX"))
+	var origin := ""
 	if mkt in ["EUR", "SUD", "ASI", "AFR"]:
-		info.text = "Fichaje internacional (%s): %s desde %s. Pagaste %s." % [
-			str(TransferMarket.REGION_LABELS.get(mkt, mkt)),
-			t["player"].display_name(), t.get("label", ""), _money(int(t["price"]))
+		origin = " Mercado: %s (%s)." % [
+			str(TransferMarket.REGION_LABELS.get(mkt, mkt)), str(t.get("label", ""))
 		]
-	else:
-		info.text = "Fichaje completado: %s por %s." % [t["player"].display_name(), _money(int(t["price"]))]
+	info.text = "%s%s" % [str(result.get("text", "")), origin]
 	GameState.save_game()
-	_refresh()
+	get_tree().change_scene_to_file("res://scenes/office/contracts.tscn")
 
 
 func _on_sell() -> void:

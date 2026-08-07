@@ -2,6 +2,7 @@ class_name YouthService
 extends RefCounted
 
 const StaffScript = preload("res://scripts/core/staff_member.gd")
+const ContractSvc = preload("res://scripts/core/contract_service.gd")
 
 const MIN_SQUAD := 7
 const MAX_SQUAD := 15
@@ -161,6 +162,9 @@ static func _refresh_market_data(p: Player) -> void:
 	p.value = int(ovr * ovr * ovr * 0.9) + 10000
 	if p.is_youth:
 		p.value = int(float(p.value) * 0.6) + 5000
+	## El contrato formativo sigue el sueldo del chico; el profesional no se toca.
+	if p.contract_formative:
+		p.contract_annual_salary = ContractSvc.annual_from_matchday(p.salary)
 
 
 static func promote(club: Club, player_id: String) -> String:
@@ -177,10 +181,12 @@ static func promote(club: Club, player_id: String) -> String:
 	p.club_id = club.id
 	## Al subir cobra sueldo de primer equipo, aunque modesto.
 	p.salary = maxi(p.salary, int(float(p.expected_salary()) * 0.6))
+	## El contrato formativo ya no vale: hay que firmarle uno profesional.
+	ContractSvc.clear_contract(p)
 	club.players.append(p)
 	if not club.bench_ids.has(p.id):
 		club.bench_ids.append(p.id)
-	return "%s sube al primer equipo." % p.display_name()
+	return "%s sube al primer equipo. Fírmale contrato profesional en Contratos antes de avanzar de jornada." % p.display_name()
 
 
 static func demote(club: Club, player_id: String) -> String:
@@ -202,9 +208,12 @@ static func demote(club: Club, player_id: String) -> String:
 	club.bench_ids.erase(p.id)
 	p.is_youth = true
 	p.salary = maxi(200, int(float(p.salary) * 0.45))
+	p.transfer_listed = false
+	## Vuelve a contrato de formación, que se renueva solo.
+	ContractSvc.sign_formative(p, null)
 	club.youth_players.append(p)
 	club.ensure_default_lineup()
-	return "%s regresa a fuerzas básicas." % p.display_name()
+	return "%s regresa a fuerzas básicas con contrato formativo." % p.display_name()
 
 
 static func scouting_estimate(club: Club, p: Player) -> String:

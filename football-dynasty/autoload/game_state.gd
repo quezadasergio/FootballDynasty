@@ -14,6 +14,7 @@ const NewsService = preload("res://scripts/core/news_service.gd")
 const ClubFinance = preload("res://scripts/core/club_finance.gd")
 const Medical = preload("res://scripts/core/medical_service.gd")
 const Youth = preload("res://scripts/core/youth_service.gd")
+const Contracts = preload("res://scripts/core/contract_service.gd")
 
 const STAFF_CANDIDATES_PER_ROLE := 10
 
@@ -34,6 +35,12 @@ var coach_name: String = ""
 var staff_candidates: Dictionary = {}
 var last_matchday_medical: Dictionary = {}
 var last_matchday_youth: Array = []
+## Traspaso pagado pendiente de firmar contrato: {player, seller_id, price, market, label}
+var pending_transfer: Dictionary = {}
+## Oferta de un club de la CPU por un transferible: {player_id, buyer_id, price}
+var pending_sale_offer: Dictionary = {}
+## Avisos de contratos de la última jornada / fin de temporada.
+var contract_notes: Array = []
 var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
 ## Display currency (internal values remain EUR)
 var currency_code: int = CurrencyScript.Code.EUR
@@ -112,6 +119,9 @@ func start_new_career(club_id: String, seed_value: int = 0) -> void:
 	last_matchday_medical = {}
 	last_matchday_youth = []
 	pending_scout_offer = {}
+	pending_transfer = {}
+	pending_sale_offer = {}
+	contract_notes = []
 	if coach_name.strip_edges() == "":
 		coach_name = Database.random_coach_name()
 	refresh_staff_candidates()
@@ -141,6 +151,215 @@ func remove_staff_candidate(role: int, member) -> void:
 	if not staff_candidates.has(key):
 		return
 	(staff_candidates[key] as Array).erase(member)
+
+
+func contract_blockers() -> Array[Player]:
+	## Jugadores del primer equipo sin contrato vigente.
+	var club := player_club
+	if club == null:
+		return [] as Array[Player]
+	return club.players_without_contract()
+
+
+func contract_block_reason() -> String:
+	## Cadena vacía = se puede avanzar de jornada.
+	var pending := contract_blockers()
+	if pending.is_empty():
+		return ""
+	var names: PackedStringArray = []
+	for i in mini(4, pending.size()):
+		names.append(pending[i].display_name())
+	var extra := ""
+	if pending.size() > names.size():
+		extra = " y %d más" % (pending.size() - names.size())
+	return "No puedes avanzar de jornada: %d jugador(es) sin contrato vigente (%s%s). Renuévalos o rescinde en Contratos." % [
+		pending.size(), ", ".join(names), extra
+	]
+
+
+func pending_transfer_player() -> Player:
+	if pending_transfer.is_empty():
+		return null
+	return Player.from_dict(pending_transfer["player"])
+
+
+func agree_transfer_fee(target: Dictionary) -> Dictionary:
+	## Paso 1 del fichaje: se acuerda y paga el traspaso al club vendedor.
+	## El jugador queda en depósito hasta firmar contrato.
+	var buyer := player_club
+	if buyer == null:
+		return {"ok": false, "text": "Sin club."}
+	if not pending_transfer.is_empty():
+		return {"ok": false, "text": "Ya tienes un fichaje pendiente de contrato. Ciérralo o cancélalo."}
+	var p: Player = target["player"]
+	var price := int(target.get("price", 0))
+	var err := TransferMarket.can_buy(buyer, price, p, _player_tier())
+	if err != "":
+		return {"ok": false, "text": err}
+	var seller_id := str(target.get("seller_id", ""))
+	if seller_id == "":
+		var idx := -1
+		for i in free_agents.size():
+			if free_agents[i].id == p.id:
+				idx = i
+				break
+		if idx < 0:
+			return {"ok": false, "text": "Ese jugador ya no está libre."}
+		free_agents.remove_at(idx)
+	else:
+		var seller: Club = get_club(seller_id)
+		if seller == null:
+			return {"ok": false, "text": "Club vendedor no encontrado."}
+		var min_keep := 8 if seller.is_foreign_market_club() else 16
+		if seller.players.size() <= min_keep:
+			return {"ok": false, "text": "El club vendedor no puede quedarse sin plantilla mínima."}
+		if seller.get_player(p.id) == null:
+			return {"ok": false, "text": "Jugador no encontrado en el club vendedor."}
+		seller.players.erase(p)
+		seller.lineup_ids.erase(p.id)
+		seller.bench_ids.erase(p.id)
+		seller.budget += price
+		seller.transfer_in_acc += price
+		seller.ensure_default_lineup()
+	buyer.budget -= price
+	buyer.transfer_out_acc += price
+	## Llega sin contrato: el sueldo y los años se negocian ahora.
+	Contracts.clear_contract(p)
+	p.transfer_listed = false
+	p.renewal_refused = false
+	pending_transfer = {
+		"player": p.to_dict(),
+		"seller_id": seller_id,
+		"price": price,
+		"market": str(target.get("market", "MEX")),
+		"label": str(target.get("label", "")),
+	}
+	state_changed.emit()
+	return {
+		"ok": true,
+		"text": "Traspaso acordado por %s. Ahora negocia el contrato de %s en Contratos." % [
+			format_money(price), p.display_name()
+		],
+	}
+
+
+func complete_pending_transfer(offer: Dictionary) -> Dictionary:
+	## Paso 2: si acepta el contrato, el jugador entra en la plantilla.
+	if pending_transfer.is_empty():
+		return {"ok": false, "text": "No hay fichaje pendiente."}
+	var club := player_club
+	var p := pending_transfer_player()
+	var result := Contracts.sign(club, p, offer)
+	if not bool(result.get("ok", false)):
+		return result
+	p.club_id = club.id
+	p.is_youth = false
+	club.players.append(p)
+	if not club.bench_ids.has(p.id):
+		club.bench_ids.append(p.id)
+	club.ensure_default_lineup()
+	pending_transfer = {}
+	state_changed.emit()
+	return {
+		"ok": true,
+		"text": "Fichaje cerrado: %s firma por %d años. %s" % [
+			p.display_name(), int(offer.get("years", 1)), str(result.get("text", ""))
+		],
+	}
+
+
+func cancel_pending_transfer(reason: String = "") -> String:
+	## El fichaje se cae y el club recupera el dinero del traspaso.
+	if pending_transfer.is_empty():
+		return ""
+	var club := player_club
+	var p := pending_transfer_player()
+	var price := int(pending_transfer.get("price", 0))
+	var seller_id := str(pending_transfer.get("seller_id", ""))
+	if club:
+		club.budget += price
+		club.transfer_out_acc = maxi(0, club.transfer_out_acc - price)
+	var seller: Club = get_club(seller_id) if seller_id != "" else null
+	if seller:
+		seller.budget -= price
+		seller.transfer_in_acc = maxi(0, seller.transfer_in_acc - price)
+		p.club_id = seller.id
+		Contracts.auto_sign(p, _rng, false)
+		seller.players.append(p)
+		seller.ensure_default_lineup()
+	else:
+		p.club_id = ""
+		free_agents.append(p)
+	pending_transfer = {}
+	state_changed.emit()
+	var tail := " %s" % reason if reason != "" else ""
+	return "Fichaje de %s cancelado; te devolvieron %s.%s" % [p.display_name(), format_money(price), tail]
+
+
+func _roll_sale_offer() -> void:
+	## Los clubes de la CPU pujan por tus transferibles.
+	var club := player_club
+	if club == null or not pending_sale_offer.is_empty():
+		return
+	var listed := club.transfer_listed_players()
+	if listed.is_empty():
+		return
+	var p: Player = listed[_rng.randi_range(0, listed.size() - 1)]
+	var chance: float = 0.18 + float(p.overall()) * 0.006
+	if _rng.randf() > chance:
+		return
+	var candidates: Array = []
+	for cid in clubs.keys():
+		if cid == player_club_id:
+			continue
+		var other: Club = clubs[cid]
+		if other.players.size() >= 26:
+			continue
+		if other.budget < int(float(p.value) * 0.7):
+			continue
+		candidates.append(other)
+	if candidates.is_empty():
+		return
+	var buyer: Club = candidates[_rng.randi_range(0, candidates.size() - 1)]
+	var price := int(float(p.value) * _rng.randf_range(0.7, 1.05))
+	pending_sale_offer = {
+		"player_id": p.id,
+		"player_name": p.display_name(),
+		"buyer_id": buyer.id,
+		"buyer_name": buyer.name,
+		"price": price,
+	}
+
+
+func accept_sale_offer() -> String:
+	if pending_sale_offer.is_empty():
+		return "No hay oferta activa."
+	var club := player_club
+	var p := club.get_player(str(pending_sale_offer["player_id"]))
+	var buyer: Club = get_club(str(pending_sale_offer["buyer_id"]))
+	if p == null or buyer == null:
+		pending_sale_offer = {}
+		return "La oferta caducó."
+	var price := int(pending_sale_offer["price"])
+	var err := TransferMarket.sell_player(club, buyer, p, price, free_agents)
+	if err != "":
+		return err
+	p.transfer_listed = false
+	p.renewal_refused = false
+	Contracts.auto_sign(p, _rng, false)
+	pending_sale_offer = {}
+	state_changed.emit()
+	return "%s se va al %s por %s." % [p.display_name(), buyer.name, format_money(price)]
+
+
+func reject_sale_offer() -> void:
+	pending_sale_offer = {}
+	state_changed.emit()
+
+
+func _player_tier() -> int:
+	var league := player_league()
+	return league.tier if league else 2
 
 
 func get_div2_clubs() -> Array[Club]:
@@ -346,6 +565,12 @@ func advance_after_matchday() -> void:
 	var season := player_season()
 	if season == null:
 		return
+	if contract_block_reason() != "":
+		return
+	contract_notes = []
+	## Un fichaje sin cerrar no aguanta otra jornada: se cae y vuelve el dinero.
+	if not pending_transfer.is_empty():
+		contract_notes.append(cancel_pending_transfer("No hubo acuerdo de contrato a tiempo."))
 	simulate_all_leagues_cpu(true)
 	last_matchday_roundup = build_matchday_roundup()
 
@@ -385,6 +610,7 @@ func advance_after_matchday() -> void:
 	last_matchday_news = NewsService.generate_matchday_digest(self)
 
 	_roll_scout_offer()
+	_roll_sale_offer()
 	refresh_staff_candidates()
 
 	for lid in seasons.keys():
@@ -494,9 +720,12 @@ func accept_scout_offer() -> String:
 	if to_youth:
 		p.is_youth = true
 		p.youth_eligible = true
+		Contracts.sign_formative(p, _rng)
 		club.youth_players.append(p)
 	else:
 		p.is_youth = false
+		## El scouter cierra el trato completo: llega con contrato firmado.
+		Contracts.auto_sign(p, _rng, false)
 		club.players.append(p)
 		club.bench_ids.append(p.id)
 	pending_scout_offer = {}
@@ -524,8 +753,16 @@ func _finish_remaining_leagues() -> void:
 
 func _end_season() -> void:
 	_apply_promotion_relegation()
+	if not pending_transfer.is_empty():
+		contract_notes.append(cancel_pending_transfer("La ventana se cerró sin acuerdo."))
+	pending_sale_offer = {}
 	for cid in clubs.keys():
 		var club: Club = clubs[cid]
+		## Los contratos se descuentan por temporada. La CPU renueva sola; en tu
+		## club los vencidos quedan pendientes de negociación.
+		var contract_report: Dictionary = Contracts.expire_season(club, _rng, cid == player_club_id)
+		if cid == player_club_id:
+			_note_contract_expiries(contract_report)
 		var survivors: Array[Player] = []
 		for p in club.players:
 			p.age += 1
@@ -570,6 +807,17 @@ func _end_season() -> void:
 	state_changed.emit()
 
 
+func _note_contract_expiries(report: Dictionary) -> void:
+	var expired: Array = report.get("expired", [])
+	var refused: Array = report.get("refused", [])
+	if not expired.is_empty():
+		contract_notes.append("Contratos vencidos (%d): %s. Renuévalos o rescinde antes de la próxima jornada." % [
+			expired.size(), ", ".join(expired)
+		])
+	if not refused.is_empty():
+		contract_notes.append("No quieren renovar y pasan a transferibles: %s." % ", ".join(refused))
+
+
 func _age_youth_squad(club: Club) -> void:
 	## Los juveniles cumplen años; al pasar de 19 salen de la cantera:
 	## los buenos suben al primer equipo, el resto se marcha.
@@ -592,6 +840,8 @@ func _age_youth_squad(club: Club) -> void:
 			y.youth_eligible = false
 			y.club_id = club.id
 			y.salary = maxi(y.salary, int(float(y.expected_salary()) * 0.7))
+			## El club ejerce su opción de compra sobre el canterano.
+			Contracts.auto_sign(y, _rng, false)
 			club.players.append(y)
 	club.youth_players = staying
 	## Nueva camada para cubrir las bajas.
@@ -671,6 +921,9 @@ func save_game() -> bool:
 		"free_agents": fa,
 		"last_match_summary": last_match_summary,
 		"pending_scout_offer": pending_scout_offer,
+		"pending_transfer": pending_transfer,
+		"pending_sale_offer": pending_sale_offer,
+		"contract_notes": contract_notes,
 	}
 	var file := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
 	if file == null:
@@ -728,6 +981,9 @@ func load_game() -> bool:
 	career_started = bool(data.get("career_started", true))
 	last_match_summary = data.get("last_match_summary", {})
 	pending_scout_offer = data.get("pending_scout_offer", {})
+	pending_transfer = data.get("pending_transfer", {})
+	pending_sale_offer = data.get("pending_sale_offer", {})
+	contract_notes = data.get("contract_notes", [])
 	coach_name = str(data.get("coach_name", ""))
 	if coach_name.strip_edges() == "":
 		coach_name = Database.random_coach_name()
@@ -741,8 +997,22 @@ func load_game() -> bool:
 	if staff_candidates.is_empty():
 		refresh_staff_candidates()
 	_ensure_youth_squads()
+	_ensure_contracts()
 	state_changed.emit()
 	return true
+
+
+func _ensure_contracts() -> void:
+	## Partidas anteriores a los contratos: firmar uno de fondo a todo el mundo
+	## para no bloquear la partida al cargar.
+	var pools: Array = [clubs, foreign_clubs]
+	for pool in pools:
+		for cid in pool.keys():
+			var club: Club = pool[cid]
+			for p in club.players:
+				Contracts.ensure_contract(p, _rng)
+			for y in club.youth_players:
+				Contracts.ensure_contract(y, _rng)
 
 
 func _ensure_youth_squads() -> void:

@@ -5,6 +5,7 @@ const WIN_BONUS := 15000
 const DRAW_BONUS := 5000
 const LOSS_BONUS := 2000
 const ClubFinanceScript = preload("res://scripts/core/club_finance.gd")
+const ContractSvc = preload("res://scripts/core/contract_service.gd")
 
 
 static func match_gate_receipts(club: Club, is_home: bool, opponent_rep: int) -> int:
@@ -92,6 +93,8 @@ static func media_rights_for_club(club: Club, league: League, managed_contracts:
 	var broadcast_total: int = int(amounts["tv"]) + int(amounts["radio"]) + int(amounts["streaming"])
 	var kit_total: int = int(amounts["kit_chest"]) + int(amounts["kit_sleeve"]) + int(amounts["kit_shorts"])
 	var commercial: int = int(amounts["sponsor"])
+	## Las figuras de la plantilla atraen publicidad y venta de camisetas.
+	var squad_marketing: int = ContractSvc.squad_marketing_income(club)
 	return {
 		"amounts": amounts,
 		"partners": partners,
@@ -99,7 +102,8 @@ static func media_rights_for_club(club: Club, league: League, managed_contracts:
 		"kit_total": kit_total,
 		"commercial": commercial,
 		"commercial_partner": str(partners["sponsor"]),
-		"total": broadcast_total + kit_total + commercial,
+		"squad_marketing": squad_marketing,
+		"total": broadcast_total + kit_total + commercial + squad_marketing,
 	}
 
 
@@ -133,8 +137,9 @@ static func build_player_matchday_finance(
 	var transfers_out: int = club.transfer_out_acc
 	var medical: int = club.medical_acc
 	var facilities: int = club.facility_acc
+	var contracts: int = club.contract_acc
 	var wage_total: int = int(wages.get("total", 0))
-	var expense: int = wage_total + loan_payment + medical + transfers_out + facilities
+	var expense: int = wage_total + loan_payment + medical + transfers_out + facilities + contracts
 	var income: int = gate + prize + income_media + transfers_in
 	return {
 		"budget_before": budget_before,
@@ -146,6 +151,8 @@ static func build_player_matchday_finance(
 		"kit_total": int(media.get("kit_total", 0)),
 		"commercial": int(media.get("commercial", 0)),
 		"commercial_partner": str(media.get("commercial_partner", "")),
+		"squad_marketing": int(media.get("squad_marketing", 0)),
+		"contract_cost": contracts,
 		"player_wages": int(wages.get("players", 0)),
 		"staff_wages": int(wages.get("staff", 0)),
 		"youth_wages": int(wages.get("youth", 0)),

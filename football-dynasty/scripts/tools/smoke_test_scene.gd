@@ -4,6 +4,7 @@ const Medical = preload("res://scripts/core/medical_service.gd")
 const Youth = preload("res://scripts/core/youth_service.gd")
 const StaffScript = preload("res://scripts/core/staff_member.gd")
 const ClubFinance = preload("res://scripts/core/club_finance.gd")
+const Contracts = preload("res://scripts/core/contract_service.gd")
 
 var _err := 0
 
@@ -58,6 +59,8 @@ func _ready() -> void:
 	err += _check_markets(targets)
 	err += _check_coach_news()
 	err += _check_contracts()
+	err += _check_player_contracts()
+	err += _check_two_step_signing()
 	err += _check_medical()
 	err += _check_youth()
 	err += _check_matchday_report()
@@ -69,15 +72,202 @@ func _ready() -> void:
 	get_tree().quit(err)
 
 
+func _resolve_contracts() -> int:
+	## Firma o libera a quien se quedó sin contrato, para poder seguir avanzando.
+	var club := GameState.player_club
+	var resolved := 0
+	for p in club.players_without_contract():
+		club.budget += 20000000
+		var result := Contracts.sign(club, p, Contracts.default_offer(p, club))
+		if not bool(result.get("ok", false)):
+			Contracts.release(club, p, GameState.free_agents)
+		resolved += 1
+	return resolved
+
+
+func _check_player_contracts() -> int:
+	var club := GameState.player_club
+	var errs := 0
+	if not Contracts.players_without_contract(club).is_empty():
+		errs += _fail("la plantilla inicial debería tener a todos con contrato")
+
+	var target: Player = club.players[0]
+	var d := Contracts.demands(target, club)
+	print("Exige: ", int(d["years"]), " años · ", int(d["annual"]), "/año · bono ", int(d["bonus"]))
+	if int(d["years"]) < Contracts.MIN_YEARS or int(d["years"]) > Contracts.MAX_YEARS:
+		errs += _fail("la duración exigida sale del rango 1-6")
+	if Contracts.demands(target, club) != d:
+		errs += _fail("las exigencias deberían ser estables entre consultas")
+
+	## Una oferta miserable se rechaza o se contraoferta; la justa se acepta.
+	var lowball := {"years": 1, "annual": int(float(d["annual"]) * 0.3), "bonus": 0}
+	var low_eval := Contracts.evaluate_offer(target, club, lowball)
+	print("Oferta baja → ", low_eval["verdict"])
+	if str(low_eval["verdict"]) == "accept":
+		errs += _fail("una oferta muy por debajo no debería aceptarse")
+	if not low_eval.has("counter"):
+		errs += _fail("el rechazo debería traer contraoferta")
+
+	## Bloqueo de jornada mientras alguien no tiene contrato.
+	Contracts.clear_contract(target)
+	if GameState.contract_block_reason() == "":
+		errs += _fail("un jugador sin contrato debería bloquear la jornada")
+	var md_before: int = GameState.player_season().current_matchday
+	GameState.advance_after_matchday()
+	if GameState.player_season().current_matchday != md_before:
+		errs += _fail("la jornada avanzó con un jugador sin contrato")
+
+	club.budget = 50000000
+	var budget_before := club.budget
+	var offer := Contracts.default_offer(target, club)
+	var signed := Contracts.sign(club, target, offer)
+	print("Firma: ", signed.get("text", ""))
+	if not bool(signed.get("ok", false)):
+		errs += _fail("la oferta igual a sus exigencias debería aceptarse")
+	if not target.has_contract():
+		errs += _fail("el jugador sigue sin contrato tras firmar")
+	if target.contract_annual_salary != int(offer["annual"]):
+		errs += _fail("el sueldo anual no quedó registrado")
+	if target.salary != Contracts.matchday_from_annual(int(offer["annual"])):
+		errs += _fail("el sueldo por jornada no se derivó del anual")
+	if club.budget != budget_before - int(offer["bonus"]):
+		errs += _fail("el bono de firma no se cobró al presupuesto")
+	if club.contract_acc != int(offer["bonus"]):
+		errs += _fail("el bono no quedó en el libro de la jornada")
+	if GameState.contract_block_reason() != "":
+		errs += _fail("la jornada sigue bloqueada tras regularizar el contrato")
+
+	## El asesor legal necesita estar contratado para opinar.
+	var without := Contracts.advisor_report(club, target, offer)
+	if bool(without.get("ok", false)):
+		errs += _fail("sin asesor legal no debería haber informe")
+	club.hire_staff(Database.generate_staff_candidates(StaffScript.Role.LEGAL, 1)[0])
+	var report := Contracts.advisor_report(club, target, offer)
+	if not bool(report.get("ok", false)):
+		errs += _fail("el asesor legal no emitió informe")
+	for needed in ["Impacto deportivo", "Impacto comercial", "Veredicto"]:
+		if not str(report.get("text", "")).contains(needed):
+			errs += _fail("el informe del asesor no cubre «%s»" % needed)
+
+	## Publicidad por plantilla: alguna figura debe aportar.
+	var star: Player = club.players[0]
+	for p in club.players:
+		if p.marketability > star.marketability:
+			star = p
+	star.marketability = 95
+	if Contracts.player_marketing_income(star, club) <= 0:
+		errs += _fail("una figura debería generar ingreso publicitario")
+	if Contracts.squad_marketing_income(club) <= 0:
+		errs += _fail("la plantilla no aporta publicidad")
+
+	## Transferibles y rescisión.
+	var spare: Player = club.players[club.players.size() - 1]
+	Contracts.set_transfer_listed(spare, true)
+	if club.transfer_listed_players().is_empty():
+		errs += _fail("la lista de transferibles quedó vacía")
+	var size_before := club.players.size()
+	var released := Contracts.release(club, spare, GameState.free_agents)
+	print("Rescisión: ", released.get("text", ""))
+	if not bool(released.get("ok", false)):
+		errs += _fail("no se pudo rescindir el contrato")
+	if club.players.size() != size_before - 1:
+		errs += _fail("el jugador rescindido sigue en plantilla")
+	if spare.has_contract():
+		errs += _fail("el jugador liberado conserva contrato")
+	return errs
+
+
+func _check_two_step_signing() -> int:
+	var club := GameState.player_club
+	var errs := 0
+	club.budget = 80000000
+	var targets := TransferMarket.list_transfer_targets(
+		GameState.clubs, club.id, GameState.free_agents, GameState.foreign_clubs
+	)
+	## Nacional, para no chocar con el cupo de extranjeros de la división.
+	var pick: Dictionary = {}
+	for t in targets:
+		if str(t.get("market", "")) == "MEX" and not t["player"].is_foreign():
+			pick = t
+			break
+	if pick.is_empty():
+		print("Sin objetivo doméstico; se omite el fichaje en dos pasos")
+		return errs
+
+	var budget_before := club.budget
+	var price := int(pick["price"])
+	var agreed := GameState.agree_transfer_fee(pick)
+	print("Paso 1: ", agreed.get("text", ""))
+	if not bool(agreed.get("ok", false)):
+		errs += _fail("no se pudo acordar el traspaso")
+		return errs
+	if club.budget != budget_before - price:
+		errs += _fail("el traspaso no se cobró al acordarlo")
+	var in_limbo := GameState.pending_transfer_player()
+	if in_limbo == null or in_limbo.has_contract():
+		errs += _fail("el fichaje pendiente debería llegar sin contrato")
+	if club.get_player(in_limbo.id) != null:
+		errs += _fail("el jugador no debería estar en plantilla antes de firmar")
+
+	## Si no acepta, no entra y el dinero sigue comprometido hasta cancelar.
+	var refused := GameState.complete_pending_transfer({"years": 1, "annual": 1000, "bonus": 0})
+	if bool(refused.get("ok", false)):
+		errs += _fail("un contrato ridículo no debería cerrarse")
+
+	var offer := Contracts.default_offer(in_limbo, club)
+	var done := GameState.complete_pending_transfer(offer)
+	print("Paso 2: ", done.get("text", ""))
+	if not bool(done.get("ok", false)):
+		errs += _fail("no se pudo cerrar el fichaje con una oferta justa")
+	if club.get_player(in_limbo.id) == null:
+		errs += _fail("el fichado no llegó a la plantilla")
+	if not GameState.pending_transfer.is_empty():
+		errs += _fail("el fichaje pendiente no se limpió")
+
+	## Y la cancelación devuelve el dinero.
+	var pick2: Dictionary = {}
+	for t in targets:
+		if str(t.get("market", "")) != "MEX" or t["player"].is_foreign():
+			continue
+		if t["player"].id != in_limbo.id:
+			pick2 = t
+			break
+	if not pick2.is_empty():
+		var before2 := club.budget
+		if bool(GameState.agree_transfer_fee(pick2).get("ok", false)):
+			print("Cancelación: ", GameState.cancel_pending_transfer("prueba"))
+			if club.budget != before2:
+				errs += _fail("cancelar el fichaje no devolvió el dinero")
+			if not GameState.pending_transfer.is_empty():
+				errs += _fail("el fichaje cancelado sigue pendiente")
+	return errs
+
+
 func _check_full_season() -> int:
 	## Corre lo que resta de temporada y comprueba el cambio de año.
 	var errs := 0
 	var start_year: int = GameState.player_season().year
 	var guard := 0
+	var resolved_total := 0
 	while GameState.player_season().year == start_year and guard < 80:
 		GameState.simulate_all_leagues_cpu(false)
+		resolved_total += _resolve_contracts()
 		GameState.advance_after_matchday()
 		guard += 1
+	print("Contratos regularizados durante la temporada: ", resolved_total)
+	## Al cambiar de temporada deben vencer contratos y quedar pendientes.
+	var expired_now: int = GameState.contract_blockers().size()
+	print("Contratos vencidos al cambiar de año: ", expired_now)
+	_resolve_contracts()
+	if not GameState.contract_blockers().is_empty():
+		errs += _fail("quedaron jugadores sin contrato tras regularizar")
+	for cid in GameState.clubs.keys():
+		if cid == GameState.player_club_id:
+			continue
+		var cpu: Club = GameState.clubs[cid]
+		if not cpu.players_without_contract().is_empty():
+			errs += _fail("%s (CPU) debería renovar sola" % cpu.short_name)
+			break
 	var club := GameState.player_club
 	print("Nueva temporada: ", GameState.player_season().year, " (", guard, " jornadas)")
 	print("Plantilla=", club.players.size(), " cantera=", club.youth_players.size())
@@ -278,12 +468,14 @@ func _check_matchday_report() -> int:
 		home, away, engine.home_goals, engine.away_goals,
 		engine.home_goal_scorers, engine.away_goal_scorers
 	)
+	_resolve_contracts()
 	GameState.advance_after_matchday()
 
 	var f: Dictionary = GameState.last_matchday_finance
 	for key in [
 		"transfers_in", "transfers_out", "medical_cost", "youth_wages",
 		"academy_cost", "kit_total", "broadcast_total", "contract_amounts",
+		"squad_marketing", "contract_cost",
 	]:
 		if not f.has(key):
 			errs += _fail("falta '%s' en el reporte de la jornada" % key)

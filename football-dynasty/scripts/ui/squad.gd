@@ -26,6 +26,7 @@ func _ready() -> void:
 	for role in StaffScript.ALL_ROLES:
 		hire_role.add_item(StaffScript.label_for_role(role), role)
 	hire_role.item_selected.connect(_on_hire_role)
+	$Margin/Scroll/HBox/Left/BtnContracts.pressed.connect(_on_open_contracts)
 	$Margin/Scroll/HBox/Left/BtnYouth.pressed.connect(_on_open_youth)
 	$Margin/Scroll/HBox/Left/BtnDemote.pressed.connect(_on_demote)
 	$Margin/Scroll/HBox/Right/BtnInfirmary.pressed.connect(_on_open_infirmary)
@@ -66,8 +67,16 @@ func _populate() -> void:
 			flag += " CAN"
 		if p.youth_eligible:
 			flag += " JUV"
+		if not p.has_contract():
+			flag += " SIN CONTRATO"
+		elif p.contract_years_left <= 1:
+			flag += " ÚLTIMO AÑO"
+		if p.transfer_listed:
+			flag += " TRANSF"
 		list.add_item("%s %s OVR%d%s" % [p.position_label(), p.display_name(), p.overall(), flag])
 		list.set_item_metadata(list.item_count - 1, p.id)
+		if not p.has_contract():
+			list.set_item_custom_fg_color(list.item_count - 1, Color(1.0, 0.45, 0.4))
 	if list.item_count > 0:
 		list.select(0)
 		_on_selected(0)
@@ -98,13 +107,15 @@ func _on_selected(index: int) -> void:
 	var youth_line := ""
 	if p.youth_eligible:
 		youth_line = "\nPuede regresar a fuerzas básicas (menor de %d años)" % Youth.RETURN_AGE_LIMIT
-	detail.text = "[b]%s[/b] · %d años — %s\nAtaque %d · Defensa %d · Medio %d · Físico %d\nTalento %d · Velocidad %d · Fuerza %d\nÁnimo %d · Felicidad club %d · Forma %d\nCansancio %.0f · Resistencia %.0f\nEstado: %s\nSalario %s/jornada · Valor %s\nPartidos temp. %d · Goles %d · Asist. %d%s" % [
+	detail.text = "[b]%s[/b] · %d años — %s\nAtaque %d · Defensa %d · Medio %d · Físico %d\nTalento %d · Velocidad %d · Fuerza %d\nÁnimo %d · Felicidad club %d · Forma %d\nCansancio %.0f · Resistencia %.0f\nEstado: %s\nSalario %s/jornada (%s al año) · Valor %s\nContrato: %s%s\nPartidos temp. %d · Goles %d · Asist. %d%s" % [
 		p.display_name(), p.age, p.position_label(),
 		p.attack, p.defense, p.midfield, p.physical,
 		p.talent, p.speed, p.strength,
 		p.morale, p.happiness, p.form,
 		p.fatigue, p.stamina, p.injury_label(),
-		_money(p.salary), _money(p.value),
+		_money(p.salary), _money(p.annual_salary()), _money(p.value),
+		p.contract_label(),
+		"  ·  en transferibles" if p.transfer_listed else "",
 		p.matches_played, p.goals, p.assists,
 		youth_line,
 	]
@@ -190,6 +201,10 @@ func _select_training(training_id: String) -> void:
 func _on_doctor() -> void:
 	doctor_report.text = StaffSvc.doctor_checkup(GameState.player_club)
 	_populate()
+
+
+func _on_open_contracts() -> void:
+	get_tree().change_scene_to_file("res://scenes/office/contracts.tscn")
 
 
 func _on_open_youth() -> void:

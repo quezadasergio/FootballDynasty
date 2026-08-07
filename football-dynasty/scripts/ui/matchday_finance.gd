@@ -39,6 +39,9 @@ func _fill() -> void:
 				_money(int(amounts.get(key, 0))),
 			]
 		text += "\n"
+	var squad_marketing: int = int(f.get("squad_marketing", 0))
+	text += "[b]Publicidad por plantilla[/b]\n"
+	text += "  Imagen de los jugadores: %s\n\n" % _money(squad_marketing)
 	text += "  Subtotal contratos: %s\n\n" % _money(int(f.get("media_total", 0)))
 
 	var transfers_in: int = int(f.get("transfers_in", 0))
@@ -62,6 +65,9 @@ func _fill() -> void:
 	var facilities: int = int(f.get("facilities_cost", 0))
 	if facilities > 0:
 		text += "  Obras del estadio: %s\n" % _money(facilities)
+	var contract_cost: int = int(f.get("contract_cost", 0))
+	if contract_cost > 0:
+		text += "  Bonos de firma e indemnizaciones: %s\n" % _money(contract_cost)
 	if transfers_out > 0:
 		text += "  Fichajes:          %s\n" % _money(transfers_out)
 	if int(f.get("loan_payment", 0)) > 0 or int(f.get("loan_remaining", 0)) > 0:
@@ -88,6 +94,11 @@ func _fill() -> void:
 			text += "  Altas: %s\n" % ", ".join(recovered)
 		if not relapsed.is_empty():
 			text += "  [color=red]Recaídas: %s[/color]\n" % ", ".join(relapsed)
+
+	if not GameState.contract_notes.is_empty():
+		text += "\n\n[b]Contratos[/b]\n"
+		for note in GameState.contract_notes:
+			text += "  [color=orange]%s[/color]\n" % str(note)
 
 	body.text = text
 

@@ -70,6 +70,10 @@ layout_mode = 2
 bbcode_enabled = true
 fit_content = true
 
+[node name="BtnContracts" type="Button" parent="Margin/Scroll/HBox/Left"]
+layout_mode = 2
+text = "Contratos y renovaciones"
+
 [node name="BtnYouth" type="Button" parent="Margin/Scroll/HBox/Left"]
 layout_mode = 2
 text = "Ver escuadra de fuerzas básicas"

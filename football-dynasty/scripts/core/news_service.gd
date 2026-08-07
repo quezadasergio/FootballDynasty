@@ -53,6 +53,7 @@ static func generate_matchday_digest(game_state: Node) -> Array:
 	_append_player_club_news(news, rng, game_state, player_club, player_league, summary)
 	_append_coach_news(news, rng, game_state, player_club, player_league, summary)
 	_append_youth_news(news, rng, game_state, player_club)
+	_append_contract_news(news, rng, game_state, player_club)
 
 	## Cobertura por liga: 1ª mucha, 2ª poca.
 	for lid in game_state.leagues.keys():
@@ -297,6 +298,43 @@ static func _append_youth_news(news: Array, rng: RandomNumberGenerator, game_sta
 		"En fuerzas básicas destacan %s. El cuerpo técnico sigue su evolución de cerca." % names,
 		true
 	))
+
+
+static func _append_contract_news(news: Array, rng: RandomNumberGenerator, game_state: Node, club: Club) -> void:
+	## La prensa se ceba con los contratos: vencimientos, transferibles y estrellas.
+	var expiring: PackedStringArray = []
+	var listed: PackedStringArray = []
+	var no_contract: PackedStringArray = []
+	for p in club.players:
+		if not p.has_contract():
+			no_contract.append(p.display_name())
+		elif p.contract_years_left <= 1:
+			expiring.append(p.display_name())
+		if p.transfer_listed:
+			listed.append(p.display_name())
+
+	if not no_contract.is_empty():
+		news.append(_item(
+			"Prensa nacional", NATIONAL_PRESS[rng.randi_range(0, NATIONAL_PRESS.size() - 1)],
+			"Lío contractual en el %s" % club.short_name,
+			"Hay futbolistas sin contrato vigente: %s. La liga exige regularizar la situación antes de la próxima jornada." % ", ".join(no_contract),
+			true
+		))
+	if not listed.is_empty() and rng.randf() < 0.7:
+		news.append(_item(
+			"Internet", WEB_OUTLETS[rng.randi_range(0, WEB_OUTLETS.size() - 1)],
+			"El %s pone en el mercado a %d jugador(es)" % [club.short_name, listed.size()],
+			"Fuentes cercanas al club señalan como transferibles a %s. Se esperan ofertas en los próximos días." % ", ".join(listed),
+			true
+		))
+	if not expiring.is_empty() and rng.randf() < 0.5:
+		var who: String = expiring[rng.randi_range(0, expiring.size() - 1)]
+		news.append(_item(
+			"Radio", RADIO_OUTLETS[rng.randi_range(0, RADIO_OUTLETS.size() - 1)],
+			"%s entra en su último año de contrato" % who,
+			"En el %s se habla de renovación. El entorno del jugador escucha propuestas mientras la directiva calcula el esfuerzo salarial." % club.name,
+			true
+		))
 
 
 static func _append_league_roundup(

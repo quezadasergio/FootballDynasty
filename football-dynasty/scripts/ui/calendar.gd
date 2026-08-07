@@ -17,10 +17,13 @@ func _refresh() -> void:
 	if season == null or league == null:
 		info.text = "Sin temporada."
 		return
+	var block := GameState.contract_block_reason()
 	if season.finished:
 		info.text = "Temporada terminada. Usa Avanzar jornada para la siguiente temporada."
+		if block != "":
+			info.text = block
 		$Margin/Scroll/VBox/BtnPlay.disabled = true
-		$Margin/Scroll/VBox/BtnAdvance.disabled = false
+		$Margin/Scroll/VBox/BtnAdvance.disabled = block != ""
 		return
 	info.text = "Jornada %d de %d — Temporada %d" % [season.current_matchday + 1, season.total_matchdays, season.year]
 	for fx in season.get_current_fixtures():
@@ -35,7 +38,9 @@ func _refresh() -> void:
 		list.add_item("%s vs %s%s%s" % [home.name if home else "?", away.name if away else "?", score, mark])
 	var mine := season.get_club_fixture(GameState.player_club_id)
 	$Margin/Scroll/VBox/BtnPlay.disabled = mine.is_empty() or bool(mine.get("played", false))
-	$Margin/Scroll/VBox/BtnAdvance.disabled = mine.is_empty() or not bool(mine.get("played", false))
+	$Margin/Scroll/VBox/BtnAdvance.disabled = mine.is_empty() or not bool(mine.get("played", false)) or block != ""
+	if block != "":
+		info.text += "\n%s" % block
 
 
 func _on_play() -> void:
@@ -53,6 +58,10 @@ func _on_play() -> void:
 
 
 func _on_advance() -> void:
+	var block := GameState.contract_block_reason()
+	if block != "":
+		info.text = block
+		return
 	GameState.advance_after_matchday()
 	GameState.save_game()
 	get_tree().change_scene_to_file("res://scenes/office/matchday_finance.tscn")

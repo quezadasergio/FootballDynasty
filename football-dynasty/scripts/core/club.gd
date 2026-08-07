@@ -37,6 +37,7 @@ var transfer_in_acc: int = 0
 var transfer_out_acc: int = 0
 var medical_acc: int = 0
 var facility_acc: int = 0
+var contract_acc: int = 0 ## bonos de firma e indemnizaciones de la jornada
 
 
 func is_foreign_market_club() -> bool:
@@ -100,11 +101,28 @@ func academy_cost() -> int:
 	return 3500 + reputation * 35 + youth_players.size() * 250
 
 
+func players_without_contract() -> Array[Player]:
+	var out: Array[Player] = []
+	for p in players:
+		if not p.has_contract():
+			out.append(p)
+	return out
+
+
+func transfer_listed_players() -> Array[Player]:
+	var out: Array[Player] = []
+	for p in players:
+		if p.transfer_listed:
+			out.append(p)
+	return out
+
+
 func reset_matchday_ledger() -> void:
 	transfer_in_acc = 0
 	transfer_out_acc = 0
 	medical_acc = 0
 	facility_acc = 0
+	contract_acc = 0
 
 
 func get_lineup_players() -> Array[Player]:
@@ -272,6 +290,7 @@ func to_dict() -> Dictionary:
 		"transfer_out_acc": transfer_out_acc,
 		"medical_acc": medical_acc,
 		"facility_acc": facility_acc,
+		"contract_acc": contract_acc,
 	}
 
 
@@ -302,6 +321,7 @@ static func from_dict(d: Dictionary) -> Club:
 	c.transfer_out_acc = int(d.get("transfer_out_acc", 0))
 	c.medical_acc = int(d.get("medical_acc", 0))
 	c.facility_acc = int(d.get("facility_acc", 0))
+	c.contract_acc = int(d.get("contract_acc", 0))
 	c.players.clear()
 	for pd in d.get("players", []):
 		c.players.append(Player.from_dict(pd))
