@@ -2,6 +2,7 @@ extends Control
 
 const StaffSvc = preload("res://scripts/core/staff_service.gd")
 const StaffScript = preload("res://scripts/core/staff_member.gd")
+const Youth = preload("res://scripts/core/youth_service.gd")
 
 @onready var list: ItemList = $Margin/Scroll/HBox/Left/PlayerList
 @onready var detail: RichTextLabel = $Margin/Scroll/HBox/Left/Detail
@@ -13,6 +14,7 @@ const StaffScript = preload("res://scripts/core/staff_member.gd")
 @onready var train_msg: Label = $Margin/Scroll/HBox/Right/TrainMsg
 @onready var fitness_advice_label: Label = $Margin/Scroll/HBox/Right/FitnessAdvice
 @onready var doctor_report: RichTextLabel = $Margin/Scroll/HBox/Right/DoctorReport
+@onready var squad_msg: Label = $Margin/Scroll/HBox/Left/SquadMsg
 
 var _hire_candidates: Array = []
 var _last_fitness_advice: Dictionary = {}
@@ -21,11 +23,12 @@ var _last_fitness_advice: Dictionary = {}
 func _ready() -> void:
 	list.item_selected.connect(_on_selected)
 	hire_role.clear()
-	hire_role.add_item("Auxiliar técnico", StaffScript.Role.ASSISTANT)
-	hire_role.add_item("Preparador físico", StaffScript.Role.FITNESS)
-	hire_role.add_item("Médico", StaffScript.Role.DOCTOR)
-	hire_role.add_item("Scouter", StaffScript.Role.SCOUT)
+	for role in StaffScript.ALL_ROLES:
+		hire_role.add_item(StaffScript.label_for_role(role), role)
 	hire_role.item_selected.connect(_on_hire_role)
+	$Margin/Scroll/HBox/Left/BtnYouth.pressed.connect(_on_open_youth)
+	$Margin/Scroll/HBox/Left/BtnDemote.pressed.connect(_on_demote)
+	$Margin/Scroll/HBox/Right/BtnInfirmary.pressed.connect(_on_open_infirmary)
 	training_type.clear()
 	for t in StaffSvc.TRAINING_TYPES:
 		training_type.add_item(t["label"])
@@ -58,9 +61,11 @@ func _populate() -> void:
 		elif club.bench_ids.has(p.id):
 			flag = " [BAN]"
 		if p.injured:
-			flag += " LES"
+			flag += " LES%d" % p.injury_matchdays
 		if p.fatigue >= 75:
 			flag += " CAN"
+		if p.youth_eligible:
+			flag += " JUV"
 		list.add_item("%s %s OVR%d%s" % [p.position_label(), p.display_name(), p.overall(), flag])
 		list.set_item_metadata(list.item_count - 1, p.id)
 	if list.item_count > 0:
@@ -72,27 +77,14 @@ func _populate() -> void:
 func _refresh_staff() -> void:
 	staff_list.clear()
 	var club := GameState.player_club
-	var roles := [
-		StaffScript.Role.ASSISTANT,
-		StaffScript.Role.FITNESS,
-		StaffScript.Role.DOCTOR,
-		StaffScript.Role.SCOUT,
-	]
-	var labels := {
-		StaffScript.Role.ASSISTANT: "Auxiliar técnico",
-		StaffScript.Role.FITNESS: "Preparador físico",
-		StaffScript.Role.DOCTOR: "Médico",
-		StaffScript.Role.SCOUT: "Scouter",
-	}
-	for role in roles:
+	for role in StaffScript.ALL_ROLES:
 		var s = club.get_staff(role)
 		if s:
 			staff_list.add_item("%s: %s · hab.%d · %s/jornada" % [s.role_label(), s.staff_name, s.skill, _money(s.wage)])
-			staff_list.set_item_metadata(staff_list.item_count - 1, StaffScript.role_key(role))
 		else:
-			staff_list.add_item("%s: (vacante)" % labels[role])
-			staff_list.set_item_metadata(staff_list.item_count - 1, StaffScript.role_key(role))
-	staff_info.text = "Nómina staff: %s/jornada · Entrenamiento jornada: %s" % [
+			staff_list.add_item("%s: (vacante)" % StaffScript.label_for_role(role))
+		staff_list.set_item_metadata(staff_list.item_count - 1, StaffScript.role_key(role))
+	staff_info.text = "Nómina staff: %s/jornada · Entrenamiento jornada: %s\nLos aspirantes se renuevan al cambiar de jornada." % [
 		_money(club.staff_wage_bill()),
 		"ya hecho" if club.trained_this_matchday else "disponible",
 	]
@@ -103,20 +95,25 @@ func _on_selected(index: int) -> void:
 	var p := GameState.player_club.get_player(pid)
 	if p == null:
 		return
-	detail.text = "[b]%s[/b] · %d años — %s\nAtaque %d · Defensa %d · Medio %d · Físico %d\nTalento %d · Velocidad %d · Fuerza %d\nÁnimo %d · Felicidad club %d · Forma %d\nCansancio %.0f · Resistencia %.0f · %s\nSalario %s/jornada · Valor %s\nPartidos temp. %d · Goles %d · Asist. %d" % [
+	var youth_line := ""
+	if p.youth_eligible:
+		youth_line = "\nPuede regresar a fuerzas básicas (menor de %d años)" % Youth.RETURN_AGE_LIMIT
+	detail.text = "[b]%s[/b] · %d años — %s\nAtaque %d · Defensa %d · Medio %d · Físico %d\nTalento %d · Velocidad %d · Fuerza %d\nÁnimo %d · Felicidad club %d · Forma %d\nCansancio %.0f · Resistencia %.0f\nEstado: %s\nSalario %s/jornada · Valor %s\nPartidos temp. %d · Goles %d · Asist. %d%s" % [
 		p.display_name(), p.age, p.position_label(),
 		p.attack, p.defense, p.midfield, p.physical,
 		p.talent, p.speed, p.strength,
 		p.morale, p.happiness, p.form,
-		p.fatigue, p.stamina, "LESIONADO" if p.injured else "Sano",
+		p.fatigue, p.stamina, p.injury_label(),
 		_money(p.salary), _money(p.value),
 		p.matches_played, p.goals, p.assists,
+		youth_line,
 	]
 
 
 func _on_hire_role(_index: int) -> void:
+	## La lista de aspirantes viene de la bolsa de la jornada, no se regenera al cambiar de puesto.
 	var role: int = hire_role.get_item_id(hire_role.selected)
-	_hire_candidates = Database.generate_staff_candidates(role, 3)
+	_hire_candidates = GameState.candidates_for_role(role)
 	hire_pick.clear()
 	for i in _hire_candidates.size():
 		var s = _hire_candidates[i]
@@ -133,7 +130,8 @@ func _on_hire() -> void:
 	if err != "":
 		staff_info.text = err
 		return
-	staff_info.text = "Contratado: %s" % member.staff_name
+	staff_info.text = "Contratado: %s (%s)" % [member.staff_name, member.role_label()]
+	GameState.remove_staff_candidate(member.role, member)
 	GameState.save_game()
 	_refresh_staff()
 	_on_hire_role(hire_role.selected)
@@ -191,6 +189,25 @@ func _select_training(training_id: String) -> void:
 
 func _on_doctor() -> void:
 	doctor_report.text = StaffSvc.doctor_checkup(GameState.player_club)
+	_populate()
+
+
+func _on_open_youth() -> void:
+	get_tree().change_scene_to_file("res://scenes/office/youth.tscn")
+
+
+func _on_open_infirmary() -> void:
+	get_tree().change_scene_to_file("res://scenes/office/infirmary.tscn")
+
+
+func _on_demote() -> void:
+	var sel := list.get_selected_items()
+	if sel.is_empty():
+		squad_msg.text = "Selecciona un jugador de la plantilla."
+		return
+	var pid: String = list.get_item_metadata(sel[0])
+	squad_msg.text = Youth.demote(GameState.player_club, pid)
+	GameState.save_game()
 	_populate()
 
 

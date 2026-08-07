@@ -17,6 +17,8 @@ func _ready() -> void:
 	filter_box.add_item("Europa (caro)", 2)
 	filter_box.add_item("Sudamérica (caro)", 3)
 	filter_box.add_item("Agentes libres", 4)
+	filter_box.add_item("Asia (accesible)", 5)
+	filter_box.add_item("África (accesible)", 6)
 	filter_box.item_selected.connect(func(_i): _apply_filter())
 	_refresh()
 
@@ -26,7 +28,7 @@ func _refresh() -> void:
 	var club := GameState.player_club
 	if club == null:
 		return
-	info.text = "Presupuesto: %s  ·  Plantilla: %d  ·  Extranjeros: %d/%d\nEuropa ~7× valor · Sudamérica ~3.5× valor (más si el club es elite)" % [
+	info.text = "Presupuesto: %s  ·  Plantilla: %d  ·  Extranjeros: %d/%d\nEuropa ~7× valor · Sudamérica ~3.4× valor · Asia y África ~1.1× valor (nivel y precio de mercado mexicano)" % [
 		_money(club.budget), club.players.size(), club.count_foreigners(), _foreigner_limit()
 	]
 	_all_targets = TransferMarket.list_transfer_targets(
@@ -57,6 +59,10 @@ func _apply_filter() -> void:
 				ok = m == "SUD"
 			4:
 				ok = m == "LIB"
+			5:
+				ok = m == "ASI"
+			6:
+				ok = m == "AFR"
 		if not ok:
 			continue
 		if shown >= 60:
@@ -93,10 +99,13 @@ func _on_buy() -> void:
 		info.text = err
 		return
 	var mkt: String = str(t.get("market", "MEX"))
-	if mkt == "EUR" or mkt == "SUD":
-		info.text = "Fichaje internacional: %s desde %s." % [t["player"].display_name(), t.get("label", "")]
+	if mkt in ["EUR", "SUD", "ASI", "AFR"]:
+		info.text = "Fichaje internacional (%s): %s desde %s. Pagaste %s." % [
+			str(TransferMarket.REGION_LABELS.get(mkt, mkt)),
+			t["player"].display_name(), t.get("label", ""), _money(int(t["price"]))
+		]
 	else:
-		info.text = "Fichaje completado: %s" % t["player"].display_name()
+		info.text = "Fichaje completado: %s por %s." % [t["player"].display_name(), _money(int(t["price"]))]
 	GameState.save_game()
 	_refresh()
 

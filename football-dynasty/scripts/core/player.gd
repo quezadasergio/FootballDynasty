@@ -31,11 +31,38 @@ var club_id: String = ""
 var matches_played: int = 0
 var origin_region: String = ""
 var nationality: String = "MEX" ## Código FIFA de 3 letras
+## Parte médico
+var injury_id: String = ""
+var injury_name: String = ""
+var injury_severity: int = 0 ## 1 leve · 2 media · 3 grave
+var injury_matchdays: int = 0 ## jornadas de baja restantes
+var injury_total: int = 0 ## jornadas de baja iniciales (para el parte)
+var treatment: String = "" ## "" sin decidir · reposo · terapia · cirugia
+## Cantera
+var is_youth: bool = false
+var youth_eligible: bool = false ## puede volver a la juvenil (menor de 19)
+var potential: int = 0 ## tope de habilidad alcanzable
 
 
 func display_name() -> String:
 	var code := nationality if nationality != "" else "MEX"
 	return "%s %s (%s)" % [first_name, last_name, code]
+
+
+func potential_cap() -> int:
+	if potential > 0:
+		return potential
+	return clampi(overall() + 6, 30, 95)
+
+
+func injury_label() -> String:
+	if not injured:
+		return "Sano"
+	if injury_name == "":
+		return "Lesionado"
+	var severities: Array[String] = ["", "leve", "media", "grave"]
+	var sev: String = severities[clampi(injury_severity, 0, 3)]
+	return "%s (%s) — %d jor. de baja" % [injury_name, sev, injury_matchdays]
 
 
 func is_foreign() -> bool:
@@ -136,6 +163,15 @@ func to_dict() -> Dictionary:
 		"matches_played": matches_played,
 		"origin_region": origin_region,
 		"nationality": nationality,
+		"injury_id": injury_id,
+		"injury_name": injury_name,
+		"injury_severity": injury_severity,
+		"injury_matchdays": injury_matchdays,
+		"injury_total": injury_total,
+		"treatment": treatment,
+		"is_youth": is_youth,
+		"youth_eligible": youth_eligible,
+		"potential": potential,
 	}
 
 
@@ -171,4 +207,20 @@ static func from_dict(d: Dictionary) -> Player:
 	p.nationality = str(d.get("nationality", "MEX")).to_upper()
 	if p.nationality == "":
 		p.nationality = "MEX"
+	p.injury_id = str(d.get("injury_id", ""))
+	p.injury_name = str(d.get("injury_name", ""))
+	p.injury_severity = int(d.get("injury_severity", 0))
+	p.injury_matchdays = int(d.get("injury_matchdays", 0))
+	p.injury_total = int(d.get("injury_total", p.injury_matchdays))
+	p.treatment = str(d.get("treatment", ""))
+	p.is_youth = bool(d.get("is_youth", false))
+	p.youth_eligible = bool(d.get("youth_eligible", false))
+	p.potential = int(d.get("potential", 0))
+	## Partidas viejas: lesión sin parte médico detallado.
+	if p.injured and p.injury_matchdays <= 0:
+		p.injury_id = "contractura"
+		p.injury_name = "Molestia sin diagnosticar"
+		p.injury_severity = 1
+		p.injury_matchdays = 2
+		p.injury_total = 2
 	return p

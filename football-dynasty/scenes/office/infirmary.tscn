@@ -1,0 +1,88 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/infirmary.gd" id="1"]
+[ext_resource type="PackedScene" path="res://scenes/ui/back_arrow.tscn" id="2"]
+
+[node name="Infirmary" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+script = ExtResource("1")
+
+[node name="BG" type="ColorRect" parent="."]
+mouse_filter = 2
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color(0.08, 0.13, 0.13, 1)
+
+[node name="BackArrow" parent="." instance=ExtResource("2")]
+layout_mode = 0
+offset_left = 8.0
+offset_top = 8.0
+offset_right = 52.0
+offset_bottom = 52.0
+target_scene = "res://scenes/office/squad.tscn"
+
+[node name="Margin" type="MarginContainer" parent="."]
+mouse_filter = 2
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+theme_override_constants/margin_left = 24
+theme_override_constants/margin_top = 56
+theme_override_constants/margin_right = 24
+theme_override_constants/margin_bottom = 16
+
+[node name="Scroll" type="ScrollContainer" parent="Margin"]
+layout_mode = 2
+horizontal_scroll_mode = 0
+vertical_scroll_mode = 1
+
+[node name="VBox" type="VBoxContainer" parent="Margin/Scroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 10
+
+[node name="Title" type="Label" parent="Margin/Scroll/VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 26
+text = "Enfermería"
+
+[node name="Info" type="Label" parent="Margin/Scroll/VBox"]
+layout_mode = 2
+autowrap_mode = 3
+
+[node name="InjuredList" type="ItemList" parent="Margin/Scroll/VBox"]
+custom_minimum_size = Vector2(0, 200)
+layout_mode = 2
+
+[node name="Detail" type="RichTextLabel" parent="Margin/Scroll/VBox"]
+custom_minimum_size = Vector2(0, 150)
+layout_mode = 2
+bbcode_enabled = true
+fit_content = true
+
+[node name="TreatRow" type="HBoxContainer" parent="Margin/Scroll/VBox"]
+layout_mode = 2
+
+[node name="TreatPick" type="OptionButton" parent="Margin/Scroll/VBox/TreatRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="BtnApply" type="Button" parent="Margin/Scroll/VBox/TreatRow"]
+layout_mode = 2
+text = "Aplicar tratamiento"
+
+[node name="Status" type="Label" parent="Margin/Scroll/VBox"]
+layout_mode = 2
+autowrap_mode = 3
+
+[node name="Report" type="RichTextLabel" parent="Margin/Scroll/VBox"]
+custom_minimum_size = Vector2(0, 200)
+layout_mode = 2
+bbcode_enabled = true
+fit_content = true

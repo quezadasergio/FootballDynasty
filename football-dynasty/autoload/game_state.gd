@@ -12,6 +12,10 @@ const StaffScript = preload("res://scripts/core/staff_member.gd")
 const CurrencyScript = preload("res://scripts/core/currency.gd")
 const NewsService = preload("res://scripts/core/news_service.gd")
 const ClubFinance = preload("res://scripts/core/club_finance.gd")
+const Medical = preload("res://scripts/core/medical_service.gd")
+const Youth = preload("res://scripts/core/youth_service.gd")
+
+const STAFF_CANDIDATES_PER_ROLE := 10
 
 var clubs: Dictionary = {} ## id -> Club
 var foreign_clubs: Dictionary = {} ## id -> Club (mercado internacional, no juegan ligas MX)
@@ -25,6 +29,11 @@ var last_matchday_news: Array = []
 var last_matchday_roundup: Array = [] ## snapshot de resultados/stats por liga
 var career_started: bool = false
 var pending_scout_offer: Dictionary = {}
+var coach_name: String = ""
+## role_key -> Array[StaffMember]; se renueva solo al cambiar de jornada.
+var staff_candidates: Dictionary = {}
+var last_matchday_medical: Dictionary = {}
+var last_matchday_youth: Array = []
 var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
 ## Display currency (internal values remain EUR)
 var currency_code: int = CurrencyScript.Code.EUR
@@ -100,9 +109,38 @@ func start_new_career(club_id: String, seed_value: int = 0) -> void:
 	last_matchday_finance = {}
 	last_matchday_news = []
 	last_matchday_roundup = []
+	last_matchday_medical = {}
+	last_matchday_youth = []
 	pending_scout_offer = {}
+	if coach_name.strip_edges() == "":
+		coach_name = Database.random_coach_name()
+	refresh_staff_candidates()
 	_rng.randomize()
 	state_changed.emit()
+
+
+func refresh_staff_candidates() -> void:
+	## Nuevos aspirantes por puesto. Se mantienen fijos hasta la siguiente jornada
+	## para que cambiar de puesto en la pantalla no rehaga la lista.
+	staff_candidates.clear()
+	for role in StaffScript.ALL_ROLES:
+		staff_candidates[StaffScript.role_key(role)] = Database.generate_staff_candidates(
+			role, STAFF_CANDIDATES_PER_ROLE
+		)
+
+
+func candidates_for_role(role: int) -> Array:
+	var key: String = StaffScript.role_key(role)
+	if not staff_candidates.has(key):
+		staff_candidates[key] = Database.generate_staff_candidates(role, STAFF_CANDIDATES_PER_ROLE)
+	return staff_candidates[key]
+
+
+func remove_staff_candidate(role: int, member) -> void:
+	var key: String = StaffScript.role_key(role)
+	if not staff_candidates.has(key):
+		return
+	(staff_candidates[key] as Array).erase(member)
 
 
 func get_div2_clubs() -> Array[Club]:
@@ -321,16 +359,16 @@ func advance_after_matchday() -> void:
 		var league: League = leagues.get(club.league_id)
 		var media := Finance.apply_media_rights(club, league, cid == player_club_id)
 		var wages := Finance.apply_matchday_wages_split(club)
-		var loan_pay := 0
-		if cid == player_club_id:
-			loan_pay = ClubFinance.apply_loan_payment(club)
-		else:
-			## CPU también puede tener préstamo en save futuro; aplica si hay.
-			loan_pay = ClubFinance.apply_loan_payment(club)
+		var loan_pay := ClubFinance.apply_loan_payment(club)
+		var medical: Dictionary = Medical.tick_matchday(club, _rng)
+		var youth_improved: Array = Youth.develop_matchday(club, _rng)
 		_recover_players(club)
+		_maybe_training_injury(club)
 		_update_happiness(club)
 		club.trained_this_matchday = false
 		if cid == player_club_id:
+			last_matchday_medical = medical
+			last_matchday_youth = youth_improved
 			var match_income: Dictionary = {}
 			if not last_match_summary.is_empty():
 				if last_match_summary.get("home_id", "") == player_club_id:
@@ -341,10 +379,13 @@ func advance_after_matchday() -> void:
 				club, league, match_income, wages, media,
 				player_report_budget_before, loan_pay
 			)
+		## El libro de la jornada se cierra tras liquidar.
+		club.reset_matchday_ledger()
 
 	last_matchday_news = NewsService.generate_matchday_digest(self)
 
 	_roll_scout_offer()
+	refresh_staff_candidates()
 
 	for lid in seasons.keys():
 		var s: Season = seasons[lid]
@@ -358,6 +399,7 @@ func advance_after_matchday() -> void:
 
 
 func _recover_players(club: Club) -> void:
+	## La curación de lesiones la lleva el servicio médico; aquí solo forma y descanso.
 	var doctor = club.get_staff(StaffScript.Role.DOCTOR)
 	var doc_bonus: float = 0.0
 	if doctor:
@@ -365,12 +407,25 @@ func _recover_players(club: Club) -> void:
 	for p in club.players:
 		p.stamina = minf(100.0, 55.0 + (100.0 - p.fatigue) * 0.4)
 		p.fatigue = maxf(0.0, p.fatigue - (8.0 + doc_bonus + randf_range(0, 4)))
-		if p.injured:
-			var heal_chance := 0.35 + doc_bonus / 100.0
-			if randf() < heal_chance:
-				p.injured = false
 		p.form = clampi(p.form + randi_range(-3, 4), 40, 95)
 		p.morale = clampi(p.morale + randi_range(-2, 3), 30, 95)
+	for y in club.youth_players:
+		y.fatigue = maxf(0.0, y.fatigue - (10.0 + randf_range(0, 5)))
+		y.stamina = minf(100.0, 60.0 + (100.0 - y.fatigue) * 0.4)
+
+
+func _maybe_training_injury(club: Club) -> void:
+	## Trabajar con la plantilla fundida cuesta lesiones.
+	for p in club.players:
+		if p.injured:
+			continue
+		var risk := 0.004
+		if p.fatigue >= 70.0:
+			risk += (p.fatigue - 70.0) * 0.0012
+		if p.age >= 33:
+			risk += 0.003
+		if _rng.randf() < risk:
+			Medical.assign_injury(p, _rng, false)
 
 
 func _update_happiness(club: Club) -> void:
@@ -433,12 +488,21 @@ func accept_scout_offer() -> String:
 		return "Presupuesto insuficiente."
 	var p := Player.from_dict(pending_scout_offer["player"])
 	club.budget -= cost
+	club.transfer_out_acc += cost
 	p.club_id = club.id
-	club.players.append(p)
-	club.bench_ids.append(p.id)
+	var to_youth: bool = p.age < Youth.RETURN_AGE_LIMIT and club.youth_players.size() < Youth.MAX_SQUAD
+	if to_youth:
+		p.is_youth = true
+		p.youth_eligible = true
+		club.youth_players.append(p)
+	else:
+		p.is_youth = false
+		club.players.append(p)
+		club.bench_ids.append(p.id)
 	pending_scout_offer = {}
 	state_changed.emit()
-	return "Fichaste a %s (%s)." % [p.display_name(), p.origin_region]
+	var destino := "fuerzas básicas" if to_youth else "primer equipo"
+	return "Fichaste a %s (%s) para %s." % [p.display_name(), p.origin_region, destino]
 
 
 func reject_scout_offer() -> void:
@@ -472,10 +536,12 @@ func _end_season() -> void:
 			p.red_cards = 0
 			p.matches_played = 0
 			p.fatigue = maxf(0.0, p.fatigue - 20.0)
+			p.youth_eligible = p.age < Youth.RETURN_AGE_LIMIT
 			if p.should_retire(_rng):
 				continue
 			survivors.append(p)
 		club.players = survivors
+		_age_youth_squad(club)
 		# Reponer si plantilla corta (nivel acorde a división y reputación)
 		var min_size := 20 if leagues[club.league_id].tier <= 1 else 18
 		while club.players.size() < min_size:
@@ -502,6 +568,35 @@ func _end_season() -> void:
 
 	season_ended.emit()
 	state_changed.emit()
+
+
+func _age_youth_squad(club: Club) -> void:
+	## Los juveniles cumplen años; al pasar de 19 salen de la cantera:
+	## los buenos suben al primer equipo, el resto se marcha.
+	var league: League = leagues.get(club.league_id)
+	var tier: int = league.tier if league else 2
+	var staying: Array[Player] = []
+	for y in club.youth_players:
+		y.age += 1
+		y.goals = 0
+		y.assists = 0
+		y.matches_played = 0
+		y.fatigue = maxf(0.0, y.fatigue - 20.0)
+		if y.age < 20:
+			y.youth_eligible = true
+			staying.append(y)
+			continue
+		var bar := 58 if tier <= 1 else 48
+		if y.overall() >= bar:
+			y.is_youth = false
+			y.youth_eligible = false
+			y.club_id = club.id
+			y.salary = maxi(y.salary, int(float(y.expected_salary()) * 0.7))
+			club.players.append(y)
+	club.youth_players = staying
+	## Nueva camada para cubrir las bajas.
+	while club.youth_players.size() < Youth.MIN_SQUAD:
+		club.youth_players.append(Database.make_youth_player(club.id, 30 + int(round(float(club.reputation) * 0.18))))
 
 
 func _apply_promotion_relegation() -> void:
@@ -558,9 +653,17 @@ func save_game() -> bool:
 	var fa: Array = []
 	for p in free_agents:
 		fa.append(p.to_dict())
+	var candidates_data: Dictionary = {}
+	for key in staff_candidates.keys():
+		var arr: Array = []
+		for member in staff_candidates[key]:
+			arr.append(member.to_dict())
+		candidates_data[key] = arr
 	var data := {
 		"player_club_id": player_club_id,
 		"career_started": career_started,
+		"coach_name": coach_name,
+		"staff_candidates": candidates_data,
 		"clubs": clubs_data,
 		"foreign_clubs": foreign_data,
 		"leagues": leagues_data,
@@ -607,6 +710,7 @@ func load_game() -> bool:
 		var all_p: Array = []
 		for cid in clubs.keys():
 			all_p.append_array(clubs[cid].players)
+			all_p.append_array(clubs[cid].youth_players)
 		for cid in foreign_clubs.keys():
 			all_p.append_array(foreign_clubs[cid].players)
 		all_p.append_array(free_agents)
@@ -624,5 +728,29 @@ func load_game() -> bool:
 	career_started = bool(data.get("career_started", true))
 	last_match_summary = data.get("last_match_summary", {})
 	pending_scout_offer = data.get("pending_scout_offer", {})
+	coach_name = str(data.get("coach_name", ""))
+	if coach_name.strip_edges() == "":
+		coach_name = Database.random_coach_name()
+	staff_candidates.clear()
+	var candidates_data: Dictionary = data.get("staff_candidates", {})
+	for key in candidates_data.keys():
+		var arr: Array = []
+		for md in candidates_data[key]:
+			arr.append(StaffScript.from_dict(md))
+		staff_candidates[str(key)] = arr
+	if staff_candidates.is_empty():
+		refresh_staff_candidates()
+	_ensure_youth_squads()
 	state_changed.emit()
 	return true
+
+
+func _ensure_youth_squads() -> void:
+	## Partidas anteriores a las fuerzas básicas: crear la camada inicial.
+	for cid in clubs.keys():
+		var club: Club = clubs[cid]
+		if not club.youth_players.is_empty():
+			continue
+		var league: League = leagues.get(club.league_id)
+		var tier: int = league.tier if league else 2
+		club.youth_players = Database.generate_youth_squad(club.id, tier, club.reputation)

@@ -3,6 +3,7 @@ extends RefCounted
 
 const FormationUtil = preload("res://scripts/core/formation.gd")
 const StaffScript = preload("res://scripts/core/staff_member.gd")
+const MedicalSvc = preload("res://scripts/core/medical_service.gd")
 
 const TRAINING_TYPES := [
 	{"id": "recovery", "label": "Recuperación"},
@@ -205,33 +206,38 @@ static func apply_training(club: Club, training_id: String, use_coach_peak: bool
 
 
 static func doctor_checkup(club: Club) -> String:
+	## Revisión de la jornada: alivia cansancio y lista el parte médico.
+	## Las lesiones ya no se curan aquí: se recuperan jornada a jornada según el tratamiento.
 	var doctor = club.get_staff(StaffScript.Role.DOCTOR)
 	if doctor == null:
 		return "Contrata un médico para la revisión."
-	var healed := 0
 	var rested := 0
-	var lines: PackedStringArray = []
-	var shown := 0
+	var injured_lines: PackedStringArray = []
+	var fatigue_lines: PackedStringArray = []
 	for p in club.players:
-		var line := "%s: cansancio %.0f" % [p.display_name(), p.fatigue]
 		if p.injured:
-			line += " · LESIONADO"
-			if randf() < doctor.skill / 130.0:
-				p.injured = false
-				healed += 1
-				line += " → recuperado"
+			var treat: String = "sin tratamiento decidido"
+			if p.treatment != "":
+				treat = str(MedicalSvc.TREATMENT_LABELS.get(p.treatment, p.treatment))
+			injured_lines.append("  %s — %s · %s" % [p.display_name(), p.injury_label(), treat])
+			continue
 		var reduce: float = 6.0 + float(doctor.skill) * 0.12
 		if p.fatigue > 0:
 			p.fatigue = maxf(0.0, p.fatigue - reduce)
 			rested += 1
-		if p.fatigue >= 75:
-			line += " · ALERTA fatiga"
-		if shown < 8:
-			lines.append(line)
-			shown += 1
-	return "Revisión del Dr. %s (hab. %d)\nCuraciones: %d · Aliviados: %d\n\n%s" % [
-		doctor.staff_name, doctor.skill, healed, rested, "\n".join(lines)
+		if p.fatigue >= 70 and fatigue_lines.size() < 6:
+			fatigue_lines.append("  %s: cansancio %.0f · riesgo de lesión" % [p.display_name(), p.fatigue])
+	var out := "Revisión del Dr. %s (hab. %d)\nAliviados de cansancio: %d\n" % [
+		doctor.staff_name, doctor.skill, rested
 	]
+	if injured_lines.is_empty():
+		out += "\nEnfermería: sin lesionados."
+	else:
+		out += "\nEnfermería (%d):\n%s" % [injured_lines.size(), "\n".join(injured_lines)]
+		out += "\n\nDecide cirugía o tratamiento largo en la pantalla de Enfermería."
+	if not fatigue_lines.is_empty():
+		out += "\n\nAlertas de carga:\n%s" % "\n".join(fatigue_lines)
+	return out
 
 
 static func assistant_advice(club: Club) -> Dictionary:

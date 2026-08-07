@@ -70,6 +70,18 @@ layout_mode = 2
 bbcode_enabled = true
 fit_content = true
 
+[node name="BtnYouth" type="Button" parent="Margin/Scroll/HBox/Left"]
+layout_mode = 2
+text = "Ver escuadra de fuerzas básicas"
+
+[node name="BtnDemote" type="Button" parent="Margin/Scroll/HBox/Left"]
+layout_mode = 2
+text = "Regresar seleccionado a fuerzas básicas"
+
+[node name="SquadMsg" type="Label" parent="Margin/Scroll/HBox/Left"]
+layout_mode = 2
+autowrap_mode = 3
+
 [node name="Right" type="VBoxContainer" parent="Margin/Scroll/HBox"]
 custom_minimum_size = Vector2(360, 0)
 layout_mode = 2
@@ -138,6 +150,10 @@ text = "Aplicar sugerencia del preparador"
 [node name="FitnessAdvice" type="Label" parent="Margin/Scroll/HBox/Right"]
 layout_mode = 2
 autowrap_mode = 3
+
+[node name="BtnInfirmary" type="Button" parent="Margin/Scroll/HBox/Right"]
+layout_mode = 2
+text = "Ir a Enfermería (cirugías y tratamientos)"
 
 [node name="BtnDoctor" type="Button" parent="Margin/Scroll/HBox/Right"]
 layout_mode = 2

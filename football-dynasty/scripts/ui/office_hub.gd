@@ -31,7 +31,7 @@ func _refresh() -> void:
 	if club == null:
 		header.text = "Sin club"
 		return
-	header.text = "%s  ·  %s" % [club.name, league.name if league else ""]
+	header.text = "%s  ·  %s  ·  DT %s" % [club.name, league.name if league else "", GameState.coach_name]
 	var md := season.current_matchday + 1 if season else 0
 	var total := season.total_matchdays if season else 0
 	var finished := season.finished if season else false
