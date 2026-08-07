@@ -1,0 +1,27 @@
+{
+  "clubs": [
+    {"id": "f_real_madrid", "name": "Real Madrid", "short_name": "RMA", "region": "EUR", "country": "ESP", "reputation": 98, "skill_base": 90, "color": "#ffffff"},
+    {"id": "f_barcelona", "name": "Barcelona", "short_name": "BAR", "region": "EUR", "country": "ESP", "reputation": 97, "skill_base": 89, "color": "#a50044"},
+    {"id": "f_atletico", "name": "Atlético de Madrid", "short_name": "ATM", "region": "EUR", "country": "ESP", "reputation": 92, "skill_base": 86, "color": "#cb3524"},
+    {"id": "f_man_city", "name": "Manchester City", "short_name": "MCI", "region": "EUR", "country": "ENG", "reputation": 98, "skill_base": 90, "color": "#6cabdd"},
+    {"id": "f_liverpool", "name": "Liverpool", "short_name": "LIV", "region": "EUR", "country": "ENG", "reputation": 95, "skill_base": 88, "color": "#c8102e"},
+    {"id": "f_arsenal", "name": "Arsenal", "short_name": "ARS", "region": "EUR", "country": "ENG", "reputation": 93, "skill_base": 87, "color": "#ef0107"},
+    {"id": "f_bayern", "name": "Bayern Múnich", "short_name": "BAY", "region": "EUR", "country": "GER", "reputation": 96, "skill_base": 89, "color": "#dc052d"},
+    {"id": "f_dortmund", "name": "Borussia Dortmund", "short_name": "BVB", "region": "EUR", "country": "GER", "reputation": 90, "skill_base": 85, "color": "#fde100"},
+    {"id": "f_psg", "name": "Paris Saint-Germain", "short_name": "PSG", "region": "EUR", "country": "FRA", "reputation": 95, "skill_base": 88, "color": "#004170"},
+    {"id": "f_inter", "name": "Inter de Milán", "short_name": "INT", "region": "EUR", "country": "ITA", "reputation": 93, "skill_base": 87, "color": "#010e80"},
+    {"id": "f_milan", "name": "AC Milan", "short_name": "MIL", "region": "EUR", "country": "ITA", "reputation": 91, "skill_base": 85, "color": "#fb090b"},
+    {"id": "f_porto", "name": "FC Porto", "short_name": "POR", "region": "EUR", "country": "POR", "reputation": 86, "skill_base": 82, "color": "#003893"},
+
+    {"id": "f_flamengo", "name": "Flamengo", "short_name": "FLA", "region": "SUD", "country": "BRA", "reputation": 88, "skill_base": 80, "color": "#c62828"},
+    {"id": "f_palmeiras", "name": "Palmeiras", "short_name": "PAL", "region": "SUD", "country": "BRA", "reputation": 87, "skill_base": 79, "color": "#006437"},
+    {"id": "f_sao_paulo", "name": "São Paulo", "short_name": "SAO", "region": "SUD", "country": "BRA", "reputation": 84, "skill_base": 77, "color": "#ffffff"},
+    {"id": "f_river", "name": "River Plate", "short_name": "RIV", "region": "SUD", "country": "ARG", "reputation": 89, "skill_base": 81, "color": "#e3113c"},
+    {"id": "f_boca", "name": "Boca Juniors", "short_name": "BOC", "region": "SUD", "country": "ARG", "reputation": 88, "skill_base": 80, "color": "#003b70"},
+    {"id": "f_racing", "name": "Racing Club", "short_name": "RAC", "region": "SUD", "country": "ARG", "reputation": 82, "skill_base": 76, "color": "#74acdf"},
+    {"id": "f_penarol", "name": "Peñarol", "short_name": "PEN", "region": "SUD", "country": "URU", "reputation": 80, "skill_base": 74, "color": "#ffd100"},
+    {"id": "f_nacional_uy", "name": "Nacional", "short_name": "NAC", "region": "SUD", "country": "URU", "reputation": 79, "skill_base": 73, "color": "#0033a0"},
+    {"id": "f_colo_colo", "name": "Colo-Colo", "short_name": "COL", "region": "SUD", "country": "CHI", "reputation": 81, "skill_base": 75, "color": "#000000"},
+    {"id": "f_atletico_nacional", "name": "Atlético Nacional", "short_name": "NAL", "region": "SUD", "country": "COL", "reputation": 83, "skill_base": 76, "color": "#007a33"}
+  ]
+}

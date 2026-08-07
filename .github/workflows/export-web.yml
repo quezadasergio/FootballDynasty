@@ -1,0 +1,62 @@
+name: Export Web
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, master]
+    paths:
+      - "football-dynasty/**"
+      - ".github/workflows/export-web.yml"
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Godot 4.7.1 + templates
+        uses: chickensoft-games/setup-godot@v2
+        with:
+          version: 4.7.1
+          include-templates: true
+
+      - name: Export Web
+        working-directory: football-dynasty
+        run: |
+          mkdir -p build/web
+          godot --headless --path . --export-release "Web" "build/web/index.html"
+          cat > build/web/_headers <<'EOF'
+          /*
+            Cross-Origin-Opener-Policy: same-origin
+            Cross-Origin-Embedder-Policy: require-corp
+            X-Content-Type-Options: nosniff
+          EOF
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: football-dynasty-web
+          path: football-dynasty/build/web
+
+  deploy-netlify:
+    needs: export
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: football-dynasty-web
+          path: site
+
+      - name: Deploy to Netlify
+        # Configura NETLIFY_AUTH_TOKEN y NETLIFY_SITE_ID en Secrets del repo.
+        # Si no están, este paso falla: ignóralo o desactiva el job.
+        continue-on-error: true
+        uses: nwtgck/actions-netlify@v3.0
+        with:
+          publish-dir: ./site
+          production-deploy: true
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}

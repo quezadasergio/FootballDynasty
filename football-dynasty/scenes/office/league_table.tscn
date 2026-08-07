@@ -1,0 +1,148 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/league_table.gd" id="1"]
+[ext_resource type="PackedScene" path="res://scenes/ui/back_arrow.tscn" id="2"]
+
+[node name="LeagueTable" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+script = ExtResource("1")
+
+[node name="BG" type="ColorRect" parent="."]
+mouse_filter = 2
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color(0.08, 0.1, 0.12, 1)
+
+[node name="BackArrow" parent="." instance=ExtResource("2")]
+layout_mode = 0
+offset_left = 8.0
+offset_top = 8.0
+offset_right = 52.0
+offset_bottom = 52.0
+target_scene = "res://scenes/office/office_hub.tscn"
+
+[node name="Margin" type="MarginContainer" parent="."]
+mouse_filter = 2
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+theme_override_constants/margin_left = 24
+theme_override_constants/margin_top = 56
+theme_override_constants/margin_right = 24
+theme_override_constants/margin_bottom = 16
+
+[node name="VBox" type="VBoxContainer" parent="Margin"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="Title" type="Label" parent="Margin/VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 26
+text = "Estadísticas de liga"
+
+[node name="Subtitle" type="Label" parent="Margin/VBox"]
+layout_mode = 2
+autowrap_mode = 3
+text = "Clasificación y rankings de la temporada"
+
+[node name="LeaguePick" type="OptionButton" parent="Margin/VBox"]
+layout_mode = 2
+
+[node name="Tabs" type="TabContainer" parent="Margin/VBox"]
+layout_mode = 2
+size_flags_vertical = 3
+custom_minimum_size = Vector2(0, 480)
+
+[node name="Clasificación" type="MarginContainer" parent="Margin/VBox/Tabs"]
+layout_mode = 2
+theme_override_constants/margin_left = 4
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 4
+theme_override_constants/margin_bottom = 4
+
+[node name="StandingsTree" type="Tree" parent="Margin/VBox/Tabs/Clasificación"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+column_titles_visible = true
+hide_root = true
+hide_folding = true
+select_mode = 1
+
+[node name="Goleadores" type="MarginContainer" parent="Margin/VBox/Tabs"]
+visible = false
+layout_mode = 2
+theme_override_constants/margin_left = 4
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 4
+theme_override_constants/margin_bottom = 4
+
+[node name="ScorersTree" type="Tree" parent="Margin/VBox/Tabs/Goleadores"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+column_titles_visible = true
+hide_root = true
+hide_folding = true
+select_mode = 1
+
+[node name="Asistencias" type="MarginContainer" parent="Margin/VBox/Tabs"]
+visible = false
+layout_mode = 2
+theme_override_constants/margin_left = 4
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 4
+theme_override_constants/margin_bottom = 4
+
+[node name="AssistsTree" type="Tree" parent="Margin/VBox/Tabs/Asistencias"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+column_titles_visible = true
+hide_root = true
+hide_folding = true
+select_mode = 1
+
+[node name="Disciplina" type="MarginContainer" parent="Margin/VBox/Tabs"]
+visible = false
+layout_mode = 2
+theme_override_constants/margin_left = 4
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 4
+theme_override_constants/margin_bottom = 4
+
+[node name="CardsTree" type="Tree" parent="Margin/VBox/Tabs/Disciplina"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+column_titles_visible = true
+hide_root = true
+hide_folding = true
+select_mode = 1
+
+[node name="Resultados" type="MarginContainer" parent="Margin/VBox/Tabs"]
+visible = false
+layout_mode = 2
+theme_override_constants/margin_left = 4
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 4
+theme_override_constants/margin_bottom = 4
+
+[node name="ResultsBody" type="RichTextLabel" parent="Margin/VBox/Tabs/Resultados"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+bbcode_enabled = true
+fit_content = false
+scroll_active = true
+
+[node name="Legend" type="Label" parent="Margin/VBox"]
+layout_mode = 2
+autowrap_mode = 3
+text = "PJ partidos · G ganados · E empates · P perdidos · GF goles a favor · GC goles en contra · DG diferencia · Pts puntos\nVerde: zona de ascenso a Liga MX (3) · Rojo: zona de descenso a Expansión (3)"

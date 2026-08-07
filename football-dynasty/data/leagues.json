@@ -1,0 +1,52 @@
+{
+  "leagues": [
+    {
+      "id": "div1",
+      "name": "Liga MX",
+      "tier": 1,
+      "clubs": [
+        {"id": "c_america", "name": "América", "short_name": "AME", "budget": 4500000, "stadium_capacity": 87000, "reputation": 90, "color": "#ffe600"},
+        {"id": "c_tijuana", "name": "Tijuana", "short_name": "TIJ", "budget": 2200000, "stadium_capacity": 27333, "reputation": 72, "color": "#c8102e"},
+        {"id": "c_toluca", "name": "Toluca", "short_name": "TOL", "budget": 2800000, "stadium_capacity": 30000, "reputation": 80, "color": "#d21034"},
+        {"id": "c_pumas", "name": "Pumas", "short_name": "PUM", "budget": 2400000, "stadium_capacity": 72000, "reputation": 76, "color": "#002554"},
+        {"id": "c_monterrey", "name": "Monterrey", "short_name": "MTY", "budget": 4000000, "stadium_capacity": 53500, "reputation": 88, "color": "#0b2240"},
+        {"id": "c_cruzazul", "name": "Cruz Azul", "short_name": "CAZ", "budget": 3800000, "stadium_capacity": 87000, "reputation": 86, "color": "#0033a0"},
+        {"id": "c_queretaro", "name": "Gallos Blancos de Querétaro", "short_name": "QRO", "budget": 1600000, "stadium_capacity": 34000, "reputation": 68, "color": "#1a1a1a"},
+        {"id": "c_necaxa", "name": "Necaxa", "short_name": "NEC", "budget": 1700000, "stadium_capacity": 25000, "reputation": 70, "color": "#e31837"},
+        {"id": "c_atlas", "name": "Atlas", "short_name": "ATL", "budget": 1900000, "stadium_capacity": 49850, "reputation": 73, "color": "#c8102e"},
+        {"id": "c_atlante", "name": "Atlante", "short_name": "ATE", "budget": 1500000, "stadium_capacity": 30000, "reputation": 67, "color": "#0033a0"},
+        {"id": "c_puebla", "name": "Puebla", "short_name": "PUE", "budget": 1600000, "stadium_capacity": 51726, "reputation": 69, "color": "#1e3a8a"},
+        {"id": "c_guadalajara", "name": "Guadalajara", "short_name": "GDL", "budget": 3500000, "stadium_capacity": 49850, "reputation": 85, "color": "#ce1141"},
+        {"id": "c_pachuca", "name": "Pachuca", "short_name": "PAC", "budget": 2600000, "stadium_capacity": 30000, "reputation": 78, "color": "#00205b"},
+        {"id": "c_leon", "name": "León", "short_name": "LEO", "budget": 2300000, "stadium_capacity": 33943, "reputation": 75, "color": "#007a33"},
+        {"id": "c_sanluis", "name": "Atlético de San Luis", "short_name": "ASL", "budget": 1500000, "stadium_capacity": 27000, "reputation": 66, "color": "#c8102e"},
+        {"id": "c_tigres", "name": "Tigres", "short_name": "TIG", "budget": 4200000, "stadium_capacity": 41915, "reputation": 89, "color": "#f2a900"},
+        {"id": "c_santos", "name": "Santos Laguna", "short_name": "SAN", "budget": 2000000, "stadium_capacity": 30000, "reputation": 74, "color": "#007a33"},
+        {"id": "c_juarez", "name": "FC Juárez", "short_name": "JUA", "budget": 1400000, "stadium_capacity": 21000, "reputation": 65, "color": "#0b3d91"}
+      ]
+    },
+    {
+      "id": "div2",
+      "name": "Liga de Expansión MX",
+      "tier": 2,
+      "clubs": [
+        {"id": "c_alebrijes", "name": "Alebrijes de Oaxaca", "short_name": "OAX", "budget": 650000, "stadium_capacity": 14598, "reputation": 48, "color": "#7b2cbf"},
+        {"id": "c_lapaz", "name": "Atlético La Paz", "short_name": "LAP", "budget": 600000, "stadium_capacity": 5209, "reputation": 46, "color": "#00a3e0"},
+        {"id": "c_morelia", "name": "Atlético Morelia", "short_name": "MOR", "budget": 850000, "stadium_capacity": 38869, "reputation": 55, "color": "#ffcc00"},
+        {"id": "c_cancun", "name": "Cancún FC", "short_name": "CAN", "budget": 700000, "stadium_capacity": 17289, "reputation": 50, "color": "#ff6600"},
+        {"id": "c_correcaminos", "name": "Correcaminos UAT", "short_name": "UAT", "budget": 550000, "stadium_capacity": 10520, "reputation": 44, "color": "#ff6600"},
+        {"id": "c_dorados", "name": "Dorados de Sinaloa", "short_name": "DOR", "budget": 620000, "stadium_capacity": 20195, "reputation": 47, "color": "#000000"},
+        {"id": "c_leones", "name": "Leones Negros UdeG", "short_name": "UDG", "budget": 750000, "stadium_capacity": 55020, "reputation": 52, "color": "#1a1a1a"},
+        {"id": "c_mineros", "name": "Mineros de Zacatecas", "short_name": "ZAC", "budget": 680000, "stadium_capacity": 20068, "reputation": 49, "color": "#c5a572"},
+        {"id": "c_venados", "name": "Venados de Yucatán", "short_name": "VEN", "budget": 640000, "stadium_capacity": 15087, "reputation": 48, "color": "#8b4513"},
+        {"id": "c_tepatitlan", "name": "Tepatitlán", "short_name": "TEP", "budget": 720000, "stadium_capacity": 12500, "reputation": 51, "color": "#c8102e"},
+        {"id": "c_tampico", "name": "Tampico Madero", "short_name": "TAM", "budget": 700000, "stadium_capacity": 19667, "reputation": 50, "color": "#0033a0"},
+        {"id": "c_piratas", "name": "Piratas de Veracruz", "short_name": "PIR", "budget": 580000, "stadium_capacity": 27000, "reputation": 45, "color": "#c8102e"},
+        {"id": "c_tlaxcala", "name": "Tlaxcala", "short_name": "TLA", "budget": 520000, "stadium_capacity": 12000, "reputation": 43, "color": "#e31837"},
+        {"id": "c_alacranes", "name": "Alacranes de Durango", "short_name": "DUR", "budget": 500000, "stadium_capacity": 18000, "reputation": 42, "color": "#ffcc00"},
+        {"id": "c_tapatio", "name": "Tapatío", "short_name": "TAP", "budget": 780000, "stadium_capacity": 49850, "reputation": 53, "color": "#ce1141"},
+        {"id": "c_cazhidalgo", "name": "Cruz Azul Hidalgo", "short_name": "CAH", "budget": 560000, "stadium_capacity": 7761, "reputation": 44, "color": "#0033a0"}
+      ]
+    }
+  ]
+}

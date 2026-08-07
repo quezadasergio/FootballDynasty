@@ -1,0 +1,132 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/tactics.gd" id="1"]
+[ext_resource type="PackedScene" path="res://scenes/ui/back_arrow.tscn" id="2"]
+
+[node name="Tactics" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+script = ExtResource("1")
+
+[node name="BG" type="ColorRect" parent="."]
+mouse_filter = 2
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color(0.09, 0.12, 0.1, 1)
+
+[node name="BackArrow" parent="." instance=ExtResource("2")]
+layout_mode = 0
+offset_left = 8.0
+offset_top = 8.0
+offset_right = 52.0
+offset_bottom = 52.0
+target_scene = "res://scenes/office/office_hub.tscn"
+
+[node name="Margin" type="MarginContainer" parent="."]
+mouse_filter = 2
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+theme_override_constants/margin_left = 24
+theme_override_constants/margin_top = 56
+theme_override_constants/margin_right = 24
+theme_override_constants/margin_bottom = 16
+
+[node name="Scroll" type="ScrollContainer" parent="Margin"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+vertical_scroll_mode = 1
+
+[node name="VBox" type="VBoxContainer" parent="Margin/Scroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 10
+
+[node name="Title" type="Label" parent="Margin/Scroll/VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 26
+text = "Alineación y táctica"
+
+[node name="FormationRow" type="HBoxContainer" parent="Margin/Scroll/VBox"]
+layout_mode = 2
+
+[node name="FL" type="Label" parent="Margin/Scroll/VBox/FormationRow"]
+layout_mode = 2
+text = "Formación:"
+
+[node name="Formation" type="OptionButton" parent="Margin/Scroll/VBox/FormationRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="MentalityRow" type="HBoxContainer" parent="Margin/Scroll/VBox"]
+layout_mode = 2
+
+[node name="L" type="Label" parent="Margin/Scroll/VBox/MentalityRow"]
+layout_mode = 2
+text = "Mentalidad:"
+
+[node name="Mentality" type="OptionButton" parent="Margin/Scroll/VBox/MentalityRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="HBox" type="HBoxContainer" parent="Margin/Scroll/VBox"]
+custom_minimum_size = Vector2(0, 300)
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="LineupBox" type="VBoxContainer" parent="Margin/Scroll/VBox/HBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="LT" type="Label" parent="Margin/Scroll/VBox/HBox/LineupBox"]
+layout_mode = 2
+text = "Titulares"
+
+[node name="LineupList" type="ItemList" parent="Margin/Scroll/VBox/HBox/LineupBox"]
+custom_minimum_size = Vector2(0, 260)
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="BenchBox" type="VBoxContainer" parent="Margin/Scroll/VBox/HBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="BT" type="Label" parent="Margin/Scroll/VBox/HBox/BenchBox"]
+layout_mode = 2
+text = "Banquillo"
+
+[node name="BenchList" type="ItemList" parent="Margin/Scroll/VBox/HBox/BenchBox"]
+custom_minimum_size = Vector2(0, 260)
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="BtnSwap" type="Button" parent="Margin/Scroll/VBox"]
+layout_mode = 2
+text = "Intercambiar titular ↔ suplente"
+
+[node name="BtnAuto" type="Button" parent="Margin/Scroll/VBox"]
+layout_mode = 2
+text = "Alineación automática"
+
+[node name="BtnAdvice" type="Button" parent="Margin/Scroll/VBox"]
+layout_mode = 2
+text = "Preguntar al auxiliar técnico"
+
+[node name="BtnApplyAdvice" type="Button" parent="Margin/Scroll/VBox"]
+layout_mode = 2
+text = "Aplicar sugerencia del auxiliar"
+
+[node name="Advice" type="Label" parent="Margin/Scroll/VBox"]
+layout_mode = 2
+autowrap_mode = 3
+
+[node name="Info" type="Label" parent="Margin/Scroll/VBox"]
+layout_mode = 2
+autowrap_mode = 3
